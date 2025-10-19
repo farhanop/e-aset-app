@@ -15,22 +15,63 @@ import {
   Res,
   Query,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
+  Request,
 } from '@nestjs/common';
 import { AssetsService } from './assets.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import * as qr from 'qrcode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { Response } from 'express';
+import type { Multer } from 'multer'; // Perbaikan import ini
 
 @Controller('assets')
 @UseGuards(JwtAuthGuard)
 export class AssetsController {
   constructor(private readonly assetsService: AssetsService) {}
 
-  // API yang sudah ada tetap di bawah ini
+  @Post('upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/foto-barang',
+        filename: (req, file, cb) => {
+          const randomName = Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+          return cb(new Error('Only image files are allowed!'), false);
+        }
+        cb(null, true);
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+    }),
+  )
+  async uploadFile(@UploadedFile() file: Express.Multer.File) { 
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    
+    return {
+      message: 'File uploaded successfully',
+      url: `/uploads/foto-barang/${file.filename}`,
+      filename: file.filename,
+    };
+  }
 
   @Post()
   async create(@Body(new ValidationPipe()) createAssetDto: CreateAssetDto) {
@@ -133,12 +174,46 @@ export class AssetsController {
 
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateAssetDto: UpdateAssetDto) {
-    return this.assetsService.update(+id, updateAssetDto);
+    // Konversi UpdateAssetDto ke Partial<CreateAssetDto> dengan menangani perbedaan tipe data
+    const createAssetDto: Partial<CreateAssetDto> = {
+      id_item: updateAssetDto.id_item,
+      id_lokasi: updateAssetDto.id_lokasi,
+      id_unit_kerja: updateAssetDto.id_unit_kerja,
+      id_group: updateAssetDto.id_group ?? undefined, // Handle null -> undefined
+      merk: updateAssetDto.merk,
+      tipe_model: updateAssetDto.tipe_model,
+      spesifikasi: updateAssetDto.spesifikasi,
+      tgl_perolehan: updateAssetDto.tgl_perolehan,
+      sumber_dana: updateAssetDto.sumber_dana,
+      jumlah: updateAssetDto.jumlah, // Sekarang property ini sudah ada
+      status_aset: updateAssetDto.status_aset,
+      kondisi_terakhir: updateAssetDto.kondisi_terakhir,
+      foto_barang: updateAssetDto.foto_barang,
+    };
+    
+    return this.assetsService.update(+id, createAssetDto);
   }
 
   @Put(':id')
   async updateFull(@Param('id') id: string, @Body() updateAssetDto: UpdateAssetDto) {
-    return this.assetsService.update(+id, updateAssetDto);
+    // Konversi UpdateAssetDto ke Partial<CreateAssetDto> dengan menangani perbedaan tipe data
+    const createAssetDto: Partial<CreateAssetDto> = {
+      id_item: updateAssetDto.id_item,
+      id_lokasi: updateAssetDto.id_lokasi,
+      id_unit_kerja: updateAssetDto.id_unit_kerja,
+      id_group: updateAssetDto.id_group ?? undefined, // Handle null -> undefined
+      merk: updateAssetDto.merk,
+      tipe_model: updateAssetDto.tipe_model,
+      spesifikasi: updateAssetDto.spesifikasi,
+      tgl_perolehan: updateAssetDto.tgl_perolehan,
+      sumber_dana: updateAssetDto.sumber_dana,
+      jumlah: updateAssetDto.jumlah, // Sekarang property ini sudah ada
+      status_aset: updateAssetDto.status_aset,
+      kondisi_terakhir: updateAssetDto.kondisi_terakhir,
+      foto_barang: updateAssetDto.foto_barang,
+    };
+    
+    return this.assetsService.update(+id, createAssetDto);
   }
 
   @Delete(':id')
@@ -155,6 +230,15 @@ export class AssetsController {
         }
       }
       
+      if (asset.foto_barang) {
+        try {
+          const fotoPath = path.join(process.cwd(), asset.foto_barang);
+          await fs.unlink(fotoPath);
+        } catch (error) {
+          console.error('Gagal menghapus foto barang:', error);
+        }
+      }
+      
       return this.assetsService.remove(+id);
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -164,9 +248,6 @@ export class AssetsController {
     }
   }
 
-  // TAMBAHKAN 3 API BARU UNTUK FITUR LAPORAN DI BAWAH INI
-  
-  // Endpoint untuk mendapatkan semua gedung
   @Get('gedung')
   async findAllGedung() {
     try {
@@ -181,7 +262,6 @@ export class AssetsController {
     }
   }
 
-  // Endpoint untuk mendapatkan unit kerja berdasarkan gedung
   @Get('unit-kerja/by-gedung/:id_gedung')
   async findUnitKerjaByGedung(@Param('id_gedung', ParseIntPipe) id_gedung: number) {
     try {
@@ -196,7 +276,6 @@ export class AssetsController {
     }
   }
 
-  // Endpoint untuk mendapatkan lokasi berdasarkan gedung dan unit kerja
   @Get('lokasi/by-gedung-unit')
   async findLokasiByGedungAndUnit(
     @Query('gedungId', ParseIntPipe) gedungId: number,
@@ -213,19 +292,18 @@ export class AssetsController {
       throw new BadRequestException(`Gagal mendapatkan data lokasi: ${error.message}`);
     }
   }
-  // Tambahkan endpoint ini di dalam AssetsController class
 
-@Get('by-location/:id_lokasi')
-async findByLocation(@Param('id_lokasi', ParseIntPipe) id_lokasi: number) {
-  try {
-    const assets = await this.assetsService.findAllByLocation(id_lokasi);
-    return {
-      success: true,
-      message: `Berhasil mendapatkan data aset untuk lokasi ID ${id_lokasi}`,
-      data: assets
-    };
-  } catch (error) {
-    throw new BadRequestException(`Gagal mendapatkan data aset: ${error.message}`);
+  @Get('by-location/:id_lokasi')
+  async findByLocation(@Param('id_lokasi', ParseIntPipe) id_lokasi: number) {
+    try {
+      const assets = await this.assetsService.findAllByLocation(id_lokasi);
+      return {
+        success: true,
+        message: `Berhasil mendapatkan data aset untuk lokasi ID ${id_lokasi}`,
+        data: assets
+      };
+    } catch (error) {
+      throw new BadRequestException(`Gagal mendapatkan data aset: ${error.message}`);
+    }
   }
-}
 }

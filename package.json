@@ -1,0 +1,11 @@
+{
+  "name": "e-aset-app-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm:start:dev --prefix backend\" \"npm:dev --prefix frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

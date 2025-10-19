@@ -24,10 +24,8 @@ export class AssetsService {
     @InjectRepository(Gedung) private gedungRepository: Repository<Gedung>,
   ) {}
 
-  // Kode yang sudah ada tetap di bawah ini
-
   async create(createAssetDto: CreateAssetDto): Promise<Asset[]> {
-    const { jumlah, id_item, id_lokasi, id_unit_kerja, tgl_perolehan } = createAssetDto;
+    const { jumlah, id_item, id_lokasi, id_unit_kerja, tgl_perolehan, foto_barang } = createAssetDto;
     const createdAssets: Asset[] = [];
 
     const lastAsset = await this.assetRepository.findOne({
@@ -66,20 +64,34 @@ export class AssetsService {
       const qrCodePath = path.join(uploadDir, qrCodeFileName);
       await fs.writeFile(qrCodePath, qrCodeBuffer);
 
-      const newAssetData = {
-        ...createAssetDto,
+      // Perbaikan cara membuat entity
+      const newAsset = this.assetRepository.create({
         kode_aset,
         nomor_urut: currentNomorUrut,
-        file_qrcode: `/uploads/qrcodes/${qrCodeFileName}`
-      };
+        file_qrcode: `/uploads/qrcodes/${qrCodeFileName}`,
+        foto_barang: foto_barang || undefined, // Ubah null menjadi undefined
+        id_item,
+        id_lokasi,
+        id_unit_kerja,
+        id_group: createAssetDto.id_group,
+        merk: createAssetDto.merk,
+        tipe_model: createAssetDto.tipe_model,
+        spesifikasi: createAssetDto.spesifikasi,
+        tgl_perolehan: new Date(tgl_perolehan),
+        sumber_dana: createAssetDto.sumber_dana,
+        status_aset: createAssetDto.status_aset || 'Tersedia',
+        kondisi_terakhir: createAssetDto.kondisi_terakhir || 'Baik',
+      });
 
-      const asset = this.assetRepository.create(newAssetData);
-      const savedAsset = await this.assetRepository.save(asset);
+      const savedAsset = await this.assetRepository.save(newAsset);
       createdAssets.push(savedAsset);
     }
 
     return createdAssets;
-  }
+  
+
+  // ... kode lainnya tetap sama
+}
 
   private async _generateKodeAset(
     id_lokasi: number,
@@ -168,7 +180,6 @@ export class AssetsService {
   }
 
   async findUnitKerjaByGedung(id_gedung: number): Promise<UnitKerja[]> {
-    // Cari lokasi di gedung tertentu dan dapatkan unit kerja yang unik
     const distinctUnitKerja = await this.lokasiRepository
       .createQueryBuilder('lokasi')
       .innerJoin('lokasi.unitKerja', 'unitKerja')

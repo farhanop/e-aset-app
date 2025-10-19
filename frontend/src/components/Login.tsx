@@ -160,7 +160,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               className="text-4xl font-black text-blue-400 mb-4 transform hover:scale-105 transition-transform duration-300"
               style={{ textShadow: "2px 2px 8px rgba(0,0,0,0.3)" }}
             >
-              IGM
+              Indo Global Mandiri Palembang
             </h2>
             <div
               className={`p-4 rounded-2xl backdrop-blur-sm border transform hover:scale-102 transition-all duration-300 ${
@@ -434,7 +434,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                       <>
                         <FaTools className="mr-4 text-2xl transform group-hover:scale-110 transition-transform duration-300" />
                         <span className="text-xl transform group-hover:scale-105 transition-transform duration-300">
-                          Masuk ke E-Aset
+                          Login
                         </span>
                       </>
                     )}
@@ -470,7 +470,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                     theme === "dark" ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
-                  © {new Date().getFullYear()} Universitas IGM
+                  © BPT. {new Date().getFullYear()} Universitas IGM 
                   <br />
                   <span
                     className={`${

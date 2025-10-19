@@ -1,4 +1,3 @@
-// frontend/src/pages/DashboardPage.tsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
@@ -26,6 +25,41 @@ interface DashboardStats {
   totalKategori: number;
 }
 
+// Fungsi caching untuk mengurangi permintaan API
+const fetchWithCache = async <T,>(
+  key: string, 
+  fetcher: () => Promise<T>, 
+  cacheTime = 5 * 60 * 1000 // 5 menit
+): Promise<T> => {
+  if (typeof window === 'undefined') {
+    return fetcher();
+  }
+
+  try {
+    const cachedData = localStorage.getItem(key);
+    if (cachedData) {
+      const { data, timestamp } = JSON.parse(cachedData);
+      if (Date.now() - timestamp < cacheTime) {
+        return data;
+      }
+    }
+
+    const data = await fetcher();
+    localStorage.setItem(key, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }));
+    return data;
+  } catch (error) {
+    const cachedData = localStorage.getItem(key);
+    if (cachedData) {
+      const { data } = JSON.parse(cachedData);
+      return data;
+    }
+    throw error;
+  }
+};
+
 export function DashboardPage() {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
@@ -45,9 +79,10 @@ export function DashboardPage() {
       setLoading(true);
       setError('');
       try {
-        // Fetch data aset untuk statistik
-        const assetsResponse = await api.get('/assets');
-        const assetsData = assetsResponse.data.data || assetsResponse.data; // Handle different response formats
+        // Fetch data aset dengan caching
+        const assetsData = await fetchWithCache('dashboard-assets', () => 
+          api.get('/assets').then(res => res.data.data || res.data)
+        );
         
         if (!Array.isArray(assetsData)) {
           throw new Error('Format data aset tidak valid');
@@ -60,22 +95,23 @@ export function DashboardPage() {
         const asetDiperbaiki = assetsData.filter(asset => asset.status_aset === 'Diperbaiki').length;
         
         let totalLokasi = 0;
-        let totalKategori = 0;
-
         try {
-          // Fetch data lokasi untuk total lokasi
-          const lokasiResponse = await api.get('/master-data/lokasi');
-          const lokasiData = lokasiResponse.data.data || lokasiResponse.data;
+          // Fetch data lokasi dengan caching
+          const lokasiData = await fetchWithCache('dashboard-lokasi', () => 
+            api.get('/master-data/lokasi').then(res => res.data.data || res.data)
+          );
           totalLokasi = Array.isArray(lokasiData) ? lokasiData.length : 0;
         } catch (lokasiError) {
           console.warn('Gagal mengambil data lokasi:', lokasiError);
           totalLokasi = 0;
         }
 
+        let totalKategori = 0;
         try {
-          // Fetch data kategori untuk total kategori
-          const kategoriResponse = await api.get('/master-data/kategori-item');
-          const kategoriData = kategoriResponse.data.data || kategoriResponse.data;
+          // Fetch data kategori dengan caching
+          const kategoriData = await fetchWithCache('dashboard-kategori', () => 
+            api.get('/master-data/kategori-item').then(res => res.data.data || res.data)
+          );
           totalKategori = Array.isArray(kategoriData) ? kategoriData.length : 0;
         } catch (kategoriError) {
           console.warn('Gagal mengambil data kategori:', kategoriError);
@@ -109,6 +145,14 @@ export function DashboardPage() {
     
     fetchDashboardData();
   }, []);
+
+  // Fungsi untuk membersihkan cache
+  const clearCache = () => {
+    localStorage.removeItem('dashboard-assets');
+    localStorage.removeItem('dashboard-lokasi');
+    localStorage.removeItem('dashboard-kategori');
+    window.location.reload();
+  };
 
   // Komponen untuk kartu statistik
   const StatCard = ({ title, value, icon, color, link }: { 
@@ -237,16 +281,28 @@ export function DashboardPage() {
           </svg>
         </div>
         <p className="text-red-500 mb-4">{error}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className={`px-4 py-2 rounded-md ${
-            theme === "dark" 
-              ? "bg-blue-600 hover:bg-blue-700" 
-              : "bg-blue-500 hover:bg-blue-600"
-          } text-white`}
-        >
-          Coba Lagi
-        </button>
+        <div className="flex justify-center space-x-4">
+          <button 
+            onClick={() => window.location.reload()}
+            className={`px-4 py-2 rounded-md ${
+              theme === "dark" 
+                ? "bg-blue-600 hover:bg-blue-700" 
+                : "bg-blue-500 hover:bg-blue-600"
+            } text-white`}
+          >
+            Coba Lagi
+          </button>
+          <button 
+            onClick={clearCache}
+            className={`px-4 py-2 rounded-md ${
+              theme === "dark" 
+                ? "bg-gray-600 hover:bg-gray-700" 
+                : "bg-gray-500 hover:bg-gray-600"
+            } text-white`}
+          >
+            Hapus Cache & Muat Ulang
+          </button>
+        </div>
       </div>
     );
   }

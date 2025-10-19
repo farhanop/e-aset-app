@@ -36,5 +36,21 @@ export class CreateAssetDto {
   @IsInt()
   @Min(1)
   @IsOptional()
-  jumlah: number = 1; // Untuk input massal, default-nya 1
+  jumlah: number = 1;
+
+  @IsString()
+  @IsOptional()
+  foto_barang?: string; // Pastikan ini string, bukan string | null
+
+  @IsString()
+  @IsOptional()
+  status_aset?: string = 'Tersedia';
+
+  @IsString()
+  @IsOptional()
+  kondisi_terakhir?: string = 'Baik';
+
+  @IsInt()
+  @IsOptional()
+  id_group?: number;
 }

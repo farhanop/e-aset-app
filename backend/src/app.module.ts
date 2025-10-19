@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core'; // 1. Import APP_GUARD
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; // 2. Import Throttler
+import { ServeStaticModule } from '@nestjs/serve-static'; // Tambahkan import ini
+import { join } from 'path'; // Tambahkan import ini
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -18,6 +20,12 @@ import { AssetLifecycleModule } from './asset-lifecycle/asset-lifecycle.module';
       ttl: 60000, // Waktu dalam milidetik (60000 ms = 1 menit)
       limit: 10,  // Izinkan 10 permintaan dari IP yang sama dalam 1 menit
     }]),
+
+    // Tambahkan ServeStaticModule untuk melayani file statis
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
 
     TypeOrmModule.forRoot({
       type: 'mysql',

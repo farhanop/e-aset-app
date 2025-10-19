@@ -1,5 +1,5 @@
 // src/pages/AssetCreatePage.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useTheme } from '../contexts/ThemeContext';
@@ -38,6 +38,8 @@ interface UnitKerja {
 export function AssetCreatePage() {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState({
     id_item: '',
     id_lokasi: '',
@@ -77,6 +79,12 @@ export function AssetCreatePage() {
   const [createdAssetId, setCreatedAssetId] = useState<number | null>(null);
   const [createdAssetCount, setCreatedAssetCount] = useState<number>(0);
 
+  // State untuk upload file
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+
   useEffect(() => {
     const fetchMasterData = async () => {
       setLoading(true);
@@ -110,6 +118,65 @@ export function AssetCreatePage() {
     
     fetchMasterData();
   }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Validasi tipe file
+      if (!file.type.match('image.*')) {
+        alert('Hanya file gambar yang diperbolehkan');
+        return;
+      }
+      
+      // Validasi ukuran file (maksimal 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file maksimal 5MB');
+        return;
+      }
+      
+      setSelectedFile(file);
+      
+      // Buat preview gambar
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setPreviewImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await api.post('/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round(
+            (progressEvent.loaded * 100) / (progressEvent.total || 1)
+          );
+          setUploadProgress(progress);
+        },
+      });
+      
+      return response.data.url; // Asumsikan server mengembalikan URL file
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw new Error('Gagal mengupload file');
+    }
+  };
 
   const handleItemChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -281,6 +348,22 @@ export function AssetCreatePage() {
     }
 
     try {
+      let fotoUrl = '';
+      
+      // Upload file jika ada
+      if (selectedFile) {
+        setIsUploading(true);
+        try {
+          fotoUrl = await uploadFile(selectedFile);
+        } catch (uploadError) {
+          setError('Gagal mengupload foto. Silakan coba lagi.');
+          setIsSubmitting(false);
+          setIsUploading(false);
+          return;
+        }
+        setIsUploading(false);
+      }
+
       console.log('Data yang dikirim:', {
         ...formData,
         id_item: Number(formData.id_item),
@@ -288,6 +371,7 @@ export function AssetCreatePage() {
         id_unit_kerja: Number(formData.id_unit_kerja),
         id_group: formData.id_group ? Number(formData.id_group) : null,
         jumlah: Number(formData.jumlah),
+        foto_barang: fotoUrl,
       });
 
       const response = await api.post('/assets', {
@@ -297,6 +381,7 @@ export function AssetCreatePage() {
         id_unit_kerja: Number(formData.id_unit_kerja),
         id_group: formData.id_group ? Number(formData.id_group) : null,
         jumlah: Number(formData.jumlah),
+        foto_barang: fotoUrl,
       });
 
       console.log('Response dari server:', response.data);
@@ -378,6 +463,8 @@ export function AssetCreatePage() {
     setLokasiInput('');
     setUnitKerjaInput('');
     setGroupInput('');
+    setSelectedFile(null);
+    setPreviewImage(null);
     setPreviewData(null);
     setQrCodePreview('');
     setShowSuccessModal(false);
@@ -867,6 +954,111 @@ export function AssetCreatePage() {
               </div>
             </div>
 
+            {/* --- Upload Foto Barang --- */}
+            <div className="space-y-6">
+              <h3 className={`text-lg font-semibold border-b pb-2 ${
+                theme === "dark" 
+                  ? "text-gray-200 border-gray-700" 
+                  : "text-gray-800 border-gray-200"
+              }`}>
+                Upload Foto Barang
+              </h3>
+              
+              <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md ${
+                theme === "dark" 
+                  ? "border-gray-600 bg-gray-700/50" 
+                  : "border-gray-300 bg-gray-50"
+              }`}>
+                <div className="space-y-1 text-center">
+                  {previewImage ? (
+                    <div className="flex flex-col items-center">
+                      <img 
+                        src={previewImage} 
+                        alt="Preview" 
+                        className="max-h-64 rounded-lg shadow-md mb-3"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                          theme === "dark"
+                            ? "bg-red-700 text-white hover:bg-red-600"
+                            : "bg-red-100 text-red-700 hover:bg-red-200"
+                        }`}
+                      >
+                        Hapus Foto
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <svg
+                        className={`mx-auto h-12 w-12 ${
+                          theme === "dark" ? "text-gray-400" : "text-gray-500"
+                        }`}
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <div className="flex text-sm text-gray-600">
+                        <label
+                          htmlFor="file-upload"
+                          className={`relative cursor-pointer rounded-md font-medium ${
+                            theme === "dark"
+                              ? "text-blue-400 hover:text-blue-300"
+                              : "text-blue-600 hover:text-blue-500"
+                          }`}
+                        >
+                          <span>Upload file</span>
+                          <input
+                            id="file-upload"
+                            name="file-upload"
+                            type="file"
+                            className="sr-only"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            ref={fileInputRef}
+                            disabled={isSubmitting || isUploading}
+                          />
+                        </label>
+                        <p className="pl-1">atau drag and drop</p>
+                      </div>
+                      <p className={`text-xs ${
+                        theme === "dark" ? "text-gray-400" : "text-gray-500"
+                      }`}>
+                        PNG, JPG, GIF hingga 5MB
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+              
+              {isUploading && (
+                <div className="mt-2">
+                  <div className={`w-full bg-gray-200 rounded-full h-2.5 ${
+                    theme === "dark" ? "bg-gray-700" : ""
+                  }`}>
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className={`text-xs mt-1 ${
+                    theme === "dark" ? "text-gray-400" : "text-gray-500"
+                  }`}>
+                    Mengupload: {uploadProgress}%
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* --- Preview Kode Aset --- */}
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -946,7 +1138,7 @@ export function AssetCreatePage() {
               <button
                 type="button"
                 onClick={() => navigate('/assets')}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
                 className={`px-6 py-2 rounded-lg transition-colors ${
                   theme === "dark"
                     ? "border-gray-600 text-gray-300 hover:bg-gray-700"
@@ -957,19 +1149,19 @@ export function AssetCreatePage() {
               </button>
               <button 
                 type="submit" 
-                disabled={isSubmitting || items.length === 0}
+                disabled={isSubmitting || isUploading || items.length === 0}
                 className={`px-6 py-2 rounded-lg shadow transition-colors flex items-center ${
-                  isSubmitting || items.length === 0
+                  isSubmitting || isUploading || items.length === 0
                     ? "bg-blue-400 cursor-not-allowed"
                     : theme === "dark"
                       ? "bg-blue-600 hover:bg-blue-700"
                       : "bg-blue-600 hover:bg-blue-700"
                 } text-white`}
               >
-                {isSubmitting ? (
+                {isSubmitting || isUploading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Menyimpan...
+                    {isUploading ? 'Mengupload...' : 'Menyimpan...'}
                   </>
                 ) : (
                   `Simpan Aset ${formData.jumlah > 1 ? `(${formData.jumlah})` : ''}`

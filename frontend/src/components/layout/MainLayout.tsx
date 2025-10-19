@@ -1,23 +1,24 @@
+// frontend/src/components/layout/MainLayout.tsx
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { motion } from "framer-motion";
 import { useTheme } from "../../contexts/ThemeContext";
-import { useEffect } from "react";
-import { useAuth } from '../../contexts/AuthContext';      // 1. Import useAuth
-import { useIdleTimer } from '../../hooks/useIdleTimer';  // 2. Import useIdleTimer
+import { useEffect, useState } from "react";
+import { useAuth } from '../../contexts/AuthContext';
+import { useIdleTimer } from '../../hooks/useIdleTimer';
 
 export function MainLayout() {
   const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth(); // 3. Dapatkan status autentikasi
+  const { isAuthenticated } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false); // State untuk mengontrol sidebar di mobile
 
-  // 4. Panggil hook idle timer HANYA jika pengguna sudah login
   // Timeout diatur ke 30 menit (dalam milidetik)
   if (isAuthenticated) {
-    useIdleTimer(30 * 60 * 1000); 
+    useIdleTimer(30 * 60 * 1000);
   }
 
   // Redirect to dashboard only once when at root path "/"
@@ -26,6 +27,13 @@ export function MainLayout() {
       navigate("/dashboard", { replace: true });
     }
   }, [location.pathname, navigate]);
+
+  // Menutup sidebar saat berpindah halaman di mobile
+  useEffect(() => {
+    if (sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname, sidebarOpen]);
 
   return (
     <div
@@ -36,16 +44,26 @@ export function MainLayout() {
       }`}
     >
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+        {/* Hanya satu Sidebar component yang menangani desktop dan mobile */}
+        <Sidebar 
+          isOpen={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+        />
+        
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
+          <Header 
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+            // Tambahkan prop untuk menampilkan tombol kembali jika diperlukan
+            showBackButton={location.pathname !== "/dashboard"}
+            onBackClick={() => navigate(-1)}
+          />
           <motion.main
             key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className={`flex-1 overflow-x-hidden overflow-y-auto p-6 transition-colors duration-300 ${
+            className={`flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 transition-colors duration-300 ${
               theme === "dark"
                 ? "bg-gray-800/80 backdrop-blur-sm"
                 : "bg-white/80 backdrop-blur-sm"

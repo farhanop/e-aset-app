@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { LoginForm } from "../components/Login";
 import { User } from "../types/User";
 
+
 export function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = useState("");

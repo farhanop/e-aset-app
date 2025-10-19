@@ -22,6 +22,9 @@ export class Asset {
   @Column({ length: 255, nullable: true})
   file_qrcode: string;
 
+  @Column({ length: 255, nullable: true}) // Pastikan kolom ini ada
+  foto_barang: string;
+
   @Column()
   id_item: number;
 
@@ -74,7 +77,7 @@ export class Asset {
   kondisi_terakhir: string;
 
   // --- Relasi ---
-  @ManyToOne(() => MasterItem, { eager: true }) // eager: true akan otomatis mengambil data item
+  @ManyToOne(() => MasterItem, { eager: true })
   @JoinColumn({ name: 'id_item' })
   item: MasterItem;
 

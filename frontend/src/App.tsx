@@ -16,10 +16,10 @@ import { UsersPage } from "./pages/UsersPage";
 import { RolesPage } from "./pages/RolesPage";
 import { MasterDataPage } from "./pages/MasterDataPage";
 import { AssetsPage } from './pages/AssetsPage';
+import { ReportByLocationPage } from "./pages/ReportByLocationPage";
 import { AssetDetailPage } from './components/AssetDetailPage';
 import { AssetCreatePage } from './components/AssetCreatePage';
 import { QRCodeGenerator } from "./components/forms/QRCodeGenerator";
-//import { PageTitleUpdater } from "./components/layout/PageTitleUpdater";
 
 // 🧩 Protected Route Component (Tidak ada perubahan)
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -30,7 +30,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">Memuat...</p>
+          <p className="text-gray-600 dark:bg-gray-300">Memuat...</p>
         </div>
       </div>
     );
@@ -57,7 +57,7 @@ function AppRoutes() {
           path="/login"
           element={
             <PublicRoute>
-              <LoginPage />
+              <LoginPage />  {/* LoginPage sudah membungkus LoginForm dengan ThemeProvider */}
             </PublicRoute>
           }
         />
@@ -67,7 +67,9 @@ function AppRoutes() {
           path="/"
           element={
             <ProtectedRoute>
-              <MainLayout />
+              <ThemeProvider> 
+                <MainLayout />
+              </ThemeProvider>
             </ProtectedRoute>
           }
         >
@@ -78,6 +80,7 @@ function AppRoutes() {
           <Route path="master-data" element={<MasterDataPage />} />
           <Route path="transactions" element={<div>Transactions Page</div>} />
           <Route path="reports" element={<div>Reports Page</div>} />
+          <Route path="reports/by-location" element={<ReportByLocationPage />} />
           <Route path="settings" element={<div>Settings Page</div>} />
           <Route path="assets" element={<AssetsPage />} />
           <Route path="assets/new" element={<AssetCreatePage />} />
@@ -94,14 +97,13 @@ function AppRoutes() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        {/* Pindahkan Router ke sini untuk membungkus AppRoutes */}
-        <Router>
-          <AppRoutes />
-        </Router>
-      </AuthProvider>
+    <AuthProvider>  
+      <ThemeProvider> {/* Hapus ThemeProvider dari sini */}
+      <Router>
+        <AppRoutes />
+      </Router>
     </ThemeProvider>
+    </AuthProvider>
   );
 }
 

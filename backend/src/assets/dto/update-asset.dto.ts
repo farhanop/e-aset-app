@@ -1,5 +1,4 @@
 // src/assets/dto/update-asset.dto.ts
-
 import { 
   IsString, 
   IsOptional, 
@@ -18,7 +17,6 @@ import {
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-// Enum untuk status aset
 export enum AssetStatus {
   TERSEDIA = 'Tersedia',
   DIPINJAM = 'Dipinjam',
@@ -27,7 +25,6 @@ export enum AssetStatus {
   HILANG = 'Hilang',
 }
 
-// Enum untuk kondisi aset
 export enum AssetCondition {
   BAIK = 'Baik',
   RUSAK_RINGAN = 'Rusak Ringan',
@@ -35,7 +32,6 @@ export enum AssetCondition {
   TIDAK_DAPAT_DIGUNAKAN = 'Tidak Dapat Digunakan',
 }
 
-// Enum untuk sumber dana
 export enum FundingSource {
   APBN = 'APBN',
   APBD = 'APBD',
@@ -43,27 +39,6 @@ export enum FundingSource {
   MANDIRI = 'Mandiri',
   HIBAH = 'Hibah',
   LAINNYA = 'Lainnya',
-}
-
-// Kelas untuk update file
-class UpdateFileDto {
-  @ApiPropertyOptional({
-    description: 'Nama file QR Code',
-    type: 'string',
-    format: 'binary',
-  })
-  @IsOptional()
-  @IsString()
-  file_qrcode?: string;
-
-  @ApiPropertyOptional({
-    description: 'Nama file dokumen pengadaan',
-    type: 'string',
-    format: 'binary',
-  })
-  @IsOptional()
-  @IsString()
-  file_pengadaan?: string;
 }
 
 export class UpdateAssetDto {
@@ -157,6 +132,16 @@ export class UpdateAssetDto {
   @Min(1)
   nomor_urut?: number;
 
+  // Tambahkan property jumlah
+  @ApiPropertyOptional({
+    description: 'Jumlah aset',
+    example: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  jumlah?: number;
+
   @ApiPropertyOptional({
     description: 'Status aset',
     enum: AssetStatus,
@@ -192,6 +177,15 @@ export class UpdateAssetDto {
   @IsOptional()
   @IsString()
   file_pengadaan?: string;
+
+  @ApiPropertyOptional({
+    description: 'Foto barang',
+    type: 'string',
+    format: 'binary',
+  })
+  @IsOptional()
+  @IsString()
+  foto_barang?: string;
 
   @ApiPropertyOptional({
     description: 'Status penghapusan (soft delete)',

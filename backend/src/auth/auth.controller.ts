@@ -11,7 +11,7 @@ export class AuthController {
 
   // 2. Tambahkan aturan yang lebih ketat KHUSUS untuk endpoint login
   // Aturan ini akan menimpa (override) aturan global yang ada di app.module.ts
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Hanya 5 percobaan dalam 1 menit
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // Hanya 5 percobaan dalam 1 menit
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Request() req) {

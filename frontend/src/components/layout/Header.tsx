@@ -1,3 +1,4 @@
+// frontend/src/components/layout/Header.tsx
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -5,11 +6,19 @@ import {
   FaUserCircle,
   FaSun,
   FaMoon,
+  FaBars,
+  FaChevronLeft
 } from "react-icons/fa";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick: () => void;
+  showBackButton?: boolean;
+  onBackClick?: () => void;
+}
+
+export function Header({ onMenuClick, showBackButton = false, onBackClick }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -70,7 +79,7 @@ export function Header() {
 
   return (
     <header
-      className={`p-4 flex justify-between items-center border-b shadow-2xl transition-colors duration-300 ${
+      className={`p-3 sm:p-4 flex justify-between items-center border-b shadow-2xl transition-colors duration-300 ${
         theme === "dark"
           ? "bg-gradient-to-r from-gray-800 to-gray-900 border-gray-700"
           : "bg-gradient-to-r from-blue-800 to-blue-700 border-blue-600"
@@ -78,15 +87,35 @@ export function Header() {
     >
       {/* Nama Menu Saat Ini */}
       <div className="flex items-center">
-        <h1 className="text-xl font-bold text-white">{currentMenu}</h1>
+        {/* Tombol menu untuk mobile */}
+        <button
+          onClick={onMenuClick}
+          className="md:hidden mr-3 p-2 rounded-lg text-white hover:bg-white/10 transition-colors duration-300"
+        >
+          <FaBars className="text-xl" />
+        </button>
+        
+        {/* Tombol kembali (jika diperlukan) */}
+        {showBackButton && (
+          <button
+            onClick={onBackClick}
+            className="mr-3 p-2 rounded-lg text-white hover:bg-white/10 transition-colors duration-300"
+          >
+            <FaChevronLeft className="text-xl" />
+          </button>
+        )}
+        
+        <h1 className="text-lg sm:text-xl font-bold text-white truncate max-w-[150px] sm:max-w-xs md:max-w-md">
+          {currentMenu}
+        </h1>
       </div>
 
       {/* Bagian kanan */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 sm:space-x-4">
         {/* Dark Mode Toggle */}
         <button
           onClick={toggleTheme}
-          className={`p-3 rounded-xl backdrop-blur-sm border transition-all duration-300 hover:scale-110 ${
+          className={`p-2 sm:p-3 rounded-xl backdrop-blur-sm border transition-all duration-300 hover:scale-110 ${
             theme === "dark"
               ? "bg-yellow-500/20 border-yellow-400/30 text-yellow-300 hover:bg-yellow-500/30"
               : "bg-blue-500/20 border-blue-400/30 text-blue-300 hover:bg-blue-500/30"
@@ -102,7 +131,7 @@ export function Header() {
         {/* Menu User */}
         <div className="relative" ref={userMenuRef}>
           <button
-            className={`flex items-center space-x-3 rounded-xl backdrop-blur-sm border p-2 transition-all duration-300 hover:scale-105 focus:outline-none ${
+            className={`flex items-center space-x-2 sm:space-x-3 rounded-xl backdrop-blur-sm border p-1 sm:p-2 transition-all duration-300 hover:scale-105 focus:outline-none ${
               theme === "dark"
                 ? "bg-white/10 border-gray-600 hover:bg-white/20"
                 : "bg-white/10 border-blue-400/20 hover:bg-white/20"
@@ -110,11 +139,11 @@ export function Header() {
             onClick={() => setShowUserMenu(!showUserMenu)}
           >
             <FaUserCircle
-              className={`text-2xl ${
+              className={`text-xl sm:text-2xl ${
                 theme === "dark" ? "text-gray-300" : "text-blue-100"
               }`}
             />
-            <span className="hidden md:inline text-white font-medium">
+            <span className="hidden sm:inline text-white font-medium truncate max-w-[100px]">
               {user ? user.nama_lengkap : "User"}
             </span>
           </button>
@@ -134,14 +163,14 @@ export function Header() {
                 }`}
               >
                 <p
-                  className={`text-sm font-semibold ${
+                  className={`text-sm font-semibold truncate ${
                     theme === "dark" ? "text-white" : "text-blue-900"
                   }`}
                 >
                   {user ? user.nama_lengkap : "Administrator"}
                 </p>
                 <p
-                  className={`text-xs ${
+                  className={`text-xs truncate ${
                     theme === "dark" ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
