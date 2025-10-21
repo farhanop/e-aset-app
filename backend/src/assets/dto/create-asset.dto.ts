@@ -40,7 +40,7 @@ export class CreateAssetDto {
 
   @IsString()
   @IsOptional()
-  foto_barang?: string; // Pastikan ini string, bukan string | null
+  foto_barang?: string;
 
   @IsString()
   @IsOptional()

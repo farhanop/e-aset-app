@@ -1,12 +1,6 @@
-// src/entities/unit-kerja.entity.ts
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { UnitUtama } from './unit-utama.entity';
+import { Lokasi } from './lokasi.entity';
 
 @Entity({ name: 'tbl_unit_kerja' })
 export class UnitKerja {
@@ -26,5 +20,6 @@ export class UnitKerja {
   @JoinColumn({ name: 'id_unit_utama' })
   unitUtama: UnitUtama;
 
-  
+  @OneToMany(() => Lokasi, lokasi => lokasi.unitKerja)
+  lokasis: Lokasi[];
 }

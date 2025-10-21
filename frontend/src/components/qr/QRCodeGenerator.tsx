@@ -1,3 +1,4 @@
+// frontend/src/components/forms/QRCodeGenerator.tsx
 import QRCode from "react-qr-code";
 
 interface QRCodeGeneratorProps {

@@ -76,9 +76,22 @@ export function ReportByLocationPage() {
 
   // 1. Ambil data Gedung saat halaman pertama kali dimuat
   useEffect(() => {
-    api.get('/master-data/gedung').then(response => {
-      setGedungList(response.data);
-    });
+    const fetchGedung = async () => {
+      try {
+        const response = await api.get('/master-data/gedung');
+        if (Array.isArray(response.data)) {
+          setGedungList(response.data);
+        } else {
+          console.error("Response bukan array:", response.data);
+          setGedungList([]);
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data gedung", error);
+        setGedungList([]);
+      }
+    };
+
+    fetchGedung();
   }, []);
 
   // 2. Ambil data Unit Kerja setelah Gedung dipilih
@@ -94,7 +107,17 @@ export function ReportByLocationPage() {
       try {
         // Menggunakan parameter path bukan query string
         const response = await api.get(`/master-data/unit-kerja/by-gedung/${selectedGedung}`);
-        setUnitKerjaList(response.data.data);
+        
+        // Periksa apakah response.data adalah array
+        if (Array.isArray(response.data)) {
+          setUnitKerjaList(response.data);
+        } else if (response.data && Array.isArray(response.data.data)) {
+          // Jika response.data adalah objek dengan properti data yang merupakan array
+          setUnitKerjaList(response.data.data);
+        } else {
+          console.error("Response bukan array:", response.data);
+          setUnitKerjaList([]);
+        }
         
         // Simpan nama gedung yang dipilih
         const gedung = gedungList.find(g => g.id_gedung.toString() === selectedGedung);
@@ -103,6 +126,7 @@ export function ReportByLocationPage() {
         }
       } catch (error) {
         console.error("Gagal mengambil data unit kerja", error);
+        setUnitKerjaList([]);
       }
     };
 
@@ -126,7 +150,17 @@ export function ReportByLocationPage() {
             unitKerjaId: selectedUnit
           }
         });
-        setLokasiList(response.data.data);
+        
+        // Periksa apakah response.data adalah array
+        if (Array.isArray(response.data)) {
+          setLokasiList(response.data);
+        } else if (response.data && Array.isArray(response.data.data)) {
+          // Jika response.data adalah objek dengan properti data yang merupakan array
+          setLokasiList(response.data.data);
+        } else {
+          console.error("Response bukan array:", response.data);
+          setLokasiList([]);
+        }
         
         // Simpan nama unit yang dipilih
         const unit = unitKerjaList.find(u => u.id_unit_kerja.toString() === selectedUnit);
@@ -135,6 +169,7 @@ export function ReportByLocationPage() {
         }
       } catch (error) {
         console.error("Gagal mengambil data lokasi", error);
+        setLokasiList([]);
       }
     };
 
@@ -145,24 +180,34 @@ export function ReportByLocationPage() {
   useEffect(() => {
     if (selectedLokasi) {
       setLoading(true);
-      api.get(`/assets/by-location/${selectedLokasi}`)
-        .then(response => {
-          // Perubahan di sini: mengakses response.data.data
-          setAssets(response.data.data);
+      const fetchAssets = async () => {
+        try {
+          const response = await api.get(`/assets/by-location/${selectedLokasi}`);
+          
+          // Periksa apakah response.data adalah array
+          if (Array.isArray(response.data)) {
+            setAssets(response.data);
+          } else if (response.data && Array.isArray(response.data.data)) {
+            setAssets(response.data.data);
+          } else {
+            console.error("Response bukan array:", response.data);
+            setAssets([]);
+          }
           
           // Simpan nama lokasi yang dipilih
           const lokasi = lokasiList.find(l => l.id_lokasi.toString() === selectedLokasi);
           if (lokasi) {
             setSelectedLokasiName(lokasi.nama_ruangan);
           }
-        })
-        .catch(error => {
+        } catch (error) {
           console.error("Gagal mengambil data aset untuk lokasi ini", error);
           setAssets([]);
-        })
-        .finally(() => {
+        } finally {
           setLoading(false);
-        });
+        }
+      };
+
+      fetchAssets();
     } else {
       setAssets([]); // Kosongkan data jika tidak ada ruangan yang dipilih
       setSelectedLokasiName('');
@@ -196,7 +241,7 @@ export function ReportByLocationPage() {
         }`}>
           Laporan Inventaris per Ruangan
         </h1>
-        {assets.length > 0 && (
+        {assets && assets.length > 0 && (
           <div className="flex items-center space-x-2">
             <div className={`px-3 py-2 rounded-md text-sm font-medium ${
               theme === "dark" 
@@ -400,7 +445,7 @@ export function ReportByLocationPage() {
               <tbody className={`divide-y divide-gray-200 ${
                 theme === "dark" ? "bg-gray-800" : "bg-white"
               }`}>
-                {assets.length > 0 ? (
+                {assets && assets.length > 0 ? (
                   assets.map((asset) => (
                     <tr 
                       key={asset.id_aset} 
@@ -416,14 +461,14 @@ export function ReportByLocationPage() {
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         theme === "dark" ? "text-white" : "text-gray-900"
                       }`}>
-                        {asset.item.nama_item}
+                        {asset.item && asset.item.nama_item ? asset.item.nama_item : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                           ${asset.status_aset === 'Tersedia' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 
                             asset.status_aset === 'Dipinjam' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100' : 
                             'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'}`}>
-                          {asset.status_aset}
+                          {asset.status_aset || '-'}
                         </span>
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
@@ -465,7 +510,7 @@ export function ReportByLocationPage() {
       <div className="hidden print:block">
         <PrintInventoryReport 
           ref={printRef}
-          assets={assets}
+          assets={assets || []}
           selectedGedungName={selectedGedungName}
           selectedUnitName={selectedUnitName}
           selectedLokasiName={selectedLokasiName}

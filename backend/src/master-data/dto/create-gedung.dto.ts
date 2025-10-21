@@ -1,5 +1,5 @@
 // src/master-data/dto/create-gedung.dto.ts
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, MaxLength } from 'class-validator';
 
 export class CreateGedungDto {
   @IsString()
@@ -11,4 +11,8 @@ export class CreateGedungDto {
   @IsNotEmpty()
   @MaxLength(100)
   nama_gedung: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  id_kampus: number;
 }

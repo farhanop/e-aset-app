@@ -15,10 +15,10 @@ import { AssetLifecycleModule } from './asset-lifecycle/asset-lifecycle.module';
 
 @Module({
   imports: [
-    // 3. Konfigurasi Throttler (Rate Limiting) secara global
+
     ThrottlerModule.forRoot([{
-      ttl: 60000, // Waktu dalam milidetik (60000 ms = 1 menit)
-      limit: 10,  // Izinkan 10 permintaan dari IP yang sama dalam 1 menit
+      ttl: 600000, // Waktu dalam detik untuk menghitung ulang permintaan
+      limit: 50,  // Izinkan 10 permintaan dari IP yang sama dalam 1 menit
     }]),
 
     // Tambahkan ServeStaticModule untuk melayani file statis

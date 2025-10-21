@@ -12,6 +12,7 @@ interface Asset {
   id_aset: number;
   kode_aset: string;
   item: { nama_item: string };
+  Kampus: { nama_kampus: string };
   lokasi: { nama_ruangan: string };
   status_aset: string;
   kondisi_terakhir: string;
@@ -105,7 +106,7 @@ export function AssetsPage() {
     }
     
     setFilteredAssets(result);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [searchTerm, allAssets, filterNamaBarang, filterLokasi]);
 
   const handleRefresh = () => {
@@ -169,6 +170,7 @@ export function AssetsPage() {
               <th>Nama Barang</th>
               <td>${asset.item?.nama_item || 'N/A'}</td>
             </tr>
+            <tr>
             <tr>
               <th>Lokasi</th>
               <td>${asset.lokasi?.nama_ruangan || 'N/A'}</td>

@@ -1,4 +1,4 @@
-// src/App.tsx
+// frontend/src/App.tsx
 import {
   BrowserRouter as Router,
   Routes,
@@ -19,9 +19,10 @@ import { AssetsPage } from './pages/AssetsPage';
 import { ReportByLocationPage } from "./pages/ReportByLocationPage";
 import { AssetDetailPage } from './components/AssetDetailPage';
 import { AssetCreatePage } from './components/AssetCreatePage';
-import { QRCodeGenerator } from "./components/forms/QRCodeGenerator";
+import { QRCodeGenerator } from "./components/qr/QRCodeGenerator";
+import QRCodeListPage from "./components/qr/QRCodeListPage";
 
-// 🧩 Protected Route Component (Tidak ada perubahan)
+// 🧩 Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -39,17 +40,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
-// 🌐 Public Route Component (Tidak ada perubahan)
+// 🌐 Public Route Component
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" />;
 }
 
 function AppRoutes() {
-  const location = useLocation(); // Diperlukan agar animasi tahu URL berubah
+  const location = useLocation();
   const newLocal = "qr-generator";
   return (
-    // 👇 Bungkus Routes dengan AnimatePresence
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         {/* Public Routes */}
@@ -57,7 +57,7 @@ function AppRoutes() {
           path="/login"
           element={
             <PublicRoute>
-              <LoginPage />  {/* LoginPage sudah membungkus LoginForm dengan ThemeProvider */}
+              <LoginPage />
             </PublicRoute>
           }
         />
@@ -85,6 +85,7 @@ function AppRoutes() {
           <Route path="assets" element={<AssetsPage />} />
           <Route path="assets/new" element={<AssetCreatePage />} />
           <Route path="assets/:id" element={<AssetDetailPage />} />
+          <Route path="qrcodes" element={<QRCodeListPage />} /> {/* Tambahkan route ini */}
           <Route path={newLocal} element={<QRCodeGenerator value={""} />} />
         </Route>
 
@@ -98,11 +99,9 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>  
-      <ThemeProvider> {/* Hapus ThemeProvider dari sini */}
       <Router>
         <AppRoutes />
       </Router>
-    </ThemeProvider>
     </AuthProvider>
   );
 }

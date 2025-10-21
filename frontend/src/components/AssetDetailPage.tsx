@@ -1,10 +1,13 @@
-// frontend/src/components/AssetDetailPage.tsx
-import { useState, useEffect } from 'react';
+// src/components/AssetDetailPage.tsx
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useTheme } from '../contexts/ThemeContext';
+import QRCodeDisplay from './qr/QRCodeDisplay';
+import { generateQRPrintHTML } from './qr/QRPrintTemplate';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
+import { Modal } from '../components/Modal';
 
 // Interface untuk data aset
 interface AssetDetail {
@@ -59,16 +62,16 @@ interface AssetDetail {
   };
 }
 
-export function AssetDetailPage() {
-  const { theme } = useTheme();
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+// Custom hook untuk fetching data aset
+function useAssetDetail(id: string | undefined) {
   const [asset, setAsset] = useState<AssetDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
   useEffect(() => {
     const fetchAssetDetail = async () => {
+      if (!id) return;
+      
       setLoading(true);
       setError(null);
       
@@ -91,17 +94,454 @@ export function AssetDetailPage() {
         setLoading(false);
       }
     };
-
-    if (id) {
-      fetchAssetDetail();
-    }
+    
+    fetchAssetDetail();
   }, [id]);
+  
+  return { asset, loading, error };
+}
 
-  const handleDelete = async () => {
-    if (!asset || !window.confirm('Apakah Anda yakin ingin menghapus aset ini? Tindakan ini tidak dapat dibatalkan.')) {
-      return;
+// Helper function untuk format tanggal
+const formatDate = (dateString: string, locale = 'id-ID') => {
+  try {
+    return new Date(dateString).toLocaleDateString(locale, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (err) {
+    console.error('Error formatting date:', err);
+    return dateString;
+  }
+};
+
+// Helper function untuk mendapatkan kelas tema
+const getThemeClass = (theme: string, darkClass: string, lightClass: string) => {
+  return theme === "dark" ? darkClass : lightClass;
+};
+
+// Helper function untuk mendapatkan warna status
+const getStatusColor = (status: string, theme: string) => {
+  const statusColors: Record<string, { dark: string; light: string }> & {
+    [key: string]: { dark: string; light: string };
+  } = {
+    'Tersedia': {
+      dark: "bg-green-800 text-green-100",
+      light: "bg-green-100 text-green-800"
+    },
+    'Dipinjam': {
+      dark: "bg-yellow-800 text-yellow-100",
+      light: "bg-yellow-100 text-yellow-800"
+    },
+    'Diperbaiki': {
+      dark: "bg-blue-800 text-blue-100",
+      light: "bg-blue-100 text-blue-800"
+    },
+    'Dihapuskan': {
+      dark: "bg-red-800 text-red-100",
+      light: "bg-red-100 text-red-800"
+    },
+    'Default': {
+      dark: "bg-gray-800 text-gray-100",
+      light: "bg-gray-100 text-gray-800"
     }
+  };
+  
+  return (statusColors[status] || statusColors['Default'])[theme === "dark" ? 'dark' : 'light'];
+};
 
+// Komponen untuk informasi utama aset
+function AssetMainInfo({ asset, theme }: { asset: AssetDetail; theme: string }) {
+  return (
+    <div className={`rounded-lg shadow-md p-6 ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
+      <h2 className={`text-xl font-semibold mb-4 ${getThemeClass(theme, "text-white", "text-gray-800")}`}>
+        Informasi Aset
+      </h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Kode Aset
+          </p>
+          <p className={`text-lg font-semibold ${getThemeClass(theme, "text-blue-400", "text-blue-600")}`}>
+            {asset.kode_aset}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Nama Barang
+          </p>
+          <p className="text-base">
+            {asset.item?.nama_item || 'N/A'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Merk
+          </p>
+          <p className="text-base">
+            {asset.merk || '-'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Tipe/Model
+          </p>
+          <p className="text-base">
+            {asset.tipe_model || '-'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Kategori
+          </p>
+          <p className="text-base">
+            {asset.item?.kategori?.nama_kategori || 'N/A'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Tanggal Perolehan
+          </p>
+          <p className="text-base">
+            {formatDate(asset.tgl_perolehan)}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Sumber Dana
+          </p>
+          <p className="text-base">
+            {asset.sumber_dana || '-'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Nomor Urut
+          </p>
+          <p className="text-base">
+            {asset.nomor_urut}
+          </p>
+        </div>
+      </div>
+      
+      <div className="mt-4">
+        <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+          Spesifikasi
+        </p>
+        <p className="text-base">
+          {asset.spesifikasi || '-'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Komponen untuk status dan kondisi aset
+function AssetStatus({ asset, theme }: { asset: AssetDetail; theme: string }) {
+  const statusColor = useMemo(() => getStatusColor(asset.status_aset, theme), [asset.status_aset, theme]);
+  
+  return (
+    <div className={`rounded-lg shadow-md p-6 ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
+      <h2 className={`text-xl font-semibold mb-4 ${getThemeClass(theme, "text-white", "text-gray-800")}`}>
+        Status & Kondisi
+      </h2>
+      
+      <div className="space-y-4">
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Status Aset
+          </p>
+          <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${statusColor}`}>
+            {asset.status_aset}
+          </span>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Kondisi Terakhir
+          </p>
+          <p className="text-base">
+            {asset.kondisi_terakhir || '-'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Komponen untuk lokasi aset
+function AssetLocation({ asset, theme }: { asset: AssetDetail; theme: string }) {
+  return (
+    <div className={`rounded-lg shadow-md p-6 ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
+      <h2 className={`text-xl font-semibold mb-4 ${getThemeClass(theme, "text-white", "text-gray-800")}`}>
+        Lokasi Aset
+      </h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Ruangan
+          </p>
+          <p className="text-base">
+            {asset.lokasi?.nama_ruangan || 'N/A'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Kode Ruangan
+          </p>
+          <p className="text-base">
+            {asset.lokasi?.kode_ruangan || 'N/A'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Lantai
+          </p>
+          <p className="text-base">
+            {asset.lokasi?.lantai || '-'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Gedung
+          </p>
+          <p className="text-base">
+            {asset.lokasi?.gedung?.nama_gedung || 'N/A'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Komponen untuk unit kerja
+function AssetUnitKerja({ asset, theme }: { asset: AssetDetail; theme: string }) {
+  return (
+    <div className={`rounded-lg shadow-md p-6 ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
+      <h2 className={`text-xl font-semibold mb-4 ${getThemeClass(theme, "text-white", "text-gray-800")}`}>
+        Unit Kerja
+      </h2>
+      
+      <div className="space-y-4">
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Unit Kerja
+          </p>
+          <p className="text-base">
+            {asset.unitKerja?.nama_unit || 'N/A'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Kode Unit
+          </p>
+          <p className="text-base">
+            {asset.unitKerja?.kode_unit || 'N/A'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Unit Utama
+          </p>
+          <p className="text-base">
+            {asset.unitKerja?.unitUtama?.nama_unit_utama || 'N/A'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Komponen untuk dokumen terkait
+function AssetDocuments({ 
+  asset, 
+  theme, 
+  onPrintQR,
+  documentLoading,
+  documentError,
+  onViewDocument
+}: { 
+  asset: AssetDetail; 
+  theme: string;
+  onPrintQR: () => void;
+  documentLoading: boolean;
+  documentError: string | null;
+  onViewDocument: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <div className={`rounded-lg shadow-md p-6 ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
+      <h2 className={`text-xl font-semibold mb-4 ${getThemeClass(theme, "text-white", "text-gray-800")}`}>
+        Dokumen Terkait
+      </h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <p className={`text-sm font-medium mb-2 ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            QR Code
+          </p>
+          {asset.file_qrcode ? (
+            <div className="flex flex-col items-start">
+              <QRCodeDisplay 
+                asset={asset} 
+                size={120} 
+                className="mb-3"
+              />
+              <button
+                onClick={onPrintQR}
+                className={`px-4 py-2 rounded-md flex items-center ${getThemeClass(theme, "bg-blue-700 hover:bg-blue-600", "bg-blue-100 hover:bg-blue-200")}`}
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Cetak QR Code
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm italic">Belum ada QR Code</p>
+          )}
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium mb-2 ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Dokumen Pengadaan
+          </p>
+          {asset.file_pengadaan ? (
+            <>
+              <button
+                onClick={onViewDocument}
+                disabled={documentLoading}
+                className={`px-4 py-2 rounded-md inline-flex items-center ${
+                  documentLoading 
+                    ? "opacity-70 cursor-not-allowed" 
+                    : getThemeClass(theme, "bg-blue-700 hover:bg-blue-600", "bg-blue-100 hover:bg-blue-200")
+                }`}
+              >
+                {documentLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Memuat...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Lihat Dokumen
+                  </>
+                )}
+              </button>
+              {documentError && (
+                <p className="text-sm text-red-500 mt-2">{documentError}</p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm italic">Belum ada dokumen pengadaan</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Komponen utama
+export function AssetDetailPage() {
+  const { theme } = useTheme();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { asset, loading, error } = useAssetDetail(id);
+  
+  // State untuk print error
+  const [printError, setPrintError] = useState<string | null>(null);
+  
+  // State untuk dokumen
+  const [documentLoading, setDocumentLoading] = useState(false);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  
+  // State untuk modal konfirmasi hapus
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Handler untuk print QR Code
+  const handlePrintQR = useCallback(async () => {
+    if (!asset) return;
+    
+    try {
+      // Check if asset has QR code
+      if (!asset.file_qrcode) {
+        setPrintError('QR Code tidak tersedia untuk aset ini.');
+        return;
+      }
+      
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        setPrintError('Browser memblokir jendela popup. Silakan izinkan popup untuk fitur ini.');
+        return;
+      }
+      
+      // Check if backend URL is available
+      const backendUrl = import.meta.env.VITE_BACKEND_URL;
+      if (!backendUrl) {
+        setPrintError('Konfigurasi backend tidak tersedia.');
+        return;
+      }
+      
+      const qrCodeUrl = `${backendUrl}${asset.file_qrcode}`;
+      
+      const printHTML = generateQRPrintHTML(asset, qrCodeUrl);
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+      
+      setPrintError(null);
+    } catch (err) {
+      console.error('Error opening print window:', err);
+      setPrintError('Gagal membuka jendela cetak. Silakan coba lagi.');
+    }
+  }, [asset]);
+
+  // Handler untuk melihat dokumen
+  const handleViewDocument = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!asset?.file_pengadaan) return;
+    
+    setDocumentLoading(true);
+    setDocumentError(null);
+    
+    try {
+      const response = await fetch(asset.file_pengadaan);
+      if (!response.ok) {
+        throw new Error('Dokumen tidak dapat diakses');
+      }
+      
+      // Buka dokumen di tab baru
+      window.open(asset.file_pengadaan, '_blank');
+    } catch (err) {
+      console.error('Error accessing document:', err);
+      setDocumentError('Gagal mengakses dokumen. Silakan coba lagi nanti.');
+    } finally {
+      setDocumentLoading(false);
+    }
+  }, [asset?.file_pengadaan]);
+
+  // Handler untuk hapus aset
+  const handleDelete = useCallback(async () => {
+    if (!asset) return;
+    
+    setIsDeleting(true);
+    
     try {
       console.log(`Deleting asset with ID: ${asset.id_aset}`);
       await api.delete(`/assets/${asset.id_aset}`);
@@ -121,92 +561,16 @@ export function AssetDetailPage() {
       }
       
       alert(errorMessage);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
-  };
+  }, [asset, navigate]);
 
-  const handlePrintQR = () => {
-    if (!asset) return;
-    
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    
-    // Tentukan URL untuk QR Code - ambil dari database jika ada
-    const qrCodeUrl = asset.file_qrcode 
-      ? `${window.location.origin}${asset.file_qrcode}` 
-      : null;
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Kode Aset - ${asset.kode_aset}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; background-color: white; text-align: center; }
-          h1 { color: #333; }
-          .asset-info { margin: 20px 0; }
-          .qr-container { width: 200px; height: 200px; margin: 20px auto; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; }
-          .qr-placeholder { width: 100%; height: 100%; background-color: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-          .qr-image { max-width: 100%; max-height: 100%; }
-          table { width: 100%; max-width: 400px; margin: 20px auto; border-collapse: collapse; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          @media print {
-            button { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <h1>Kode Aset</h1>
-        <div class="asset-info">
-          <table>
-            <tr>
-              <th>Kode Aset</th>
-              <td>${asset.kode_aset}</td>
-            </tr>
-            <tr>
-              <th>Nama Barang</th>
-              <td>${asset.item?.nama_item || 'N/A'}</td>
-            </tr>
-            <tr>
-              <th>Merk</th>
-              <td>${asset.merk}</td>
-            </tr>
-            <tr>
-              <th>Tipe/Model</th>
-              <td>${asset.tipe_model}</td>
-            </tr>
-            <tr>
-              <th>Lokasi</th>
-              <td>${asset.lokasi?.nama_ruangan || 'N/A'}</td>
-            </tr>
-            <tr>
-              <th>Status</th>
-              <td>${asset.status_aset}</td>
-            </tr>
-          </table>
-        </div>
-        <div class="qr-container">
-          ${qrCodeUrl 
-            ? `<img src="${qrCodeUrl}" alt="QR Code untuk ${asset.kode_aset}" class="qr-image" />` 
-            : `<div class="qr-placeholder">QR Code untuk ${asset.kode_aset}</div>`
-          }
-        </div>
-        <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
-        <div style="margin-top: 20px;">
-          <button onclick="window.print()">Cetak</button>
-          <button onclick="window.close()">Tutup</button>
-        </div>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
+  // Loading state
   if (loading) {
     return (
-      <div className={`p-6 rounded-lg shadow-md ${
-        theme === "dark" ? "bg-gray-800" : "bg-white"
-      }`}>
+      <div className={`p-6 rounded-lg shadow-md ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
         <div className="mb-6">
           <Skeleton height={30} width={200} />
         </div>
@@ -236,34 +600,23 @@ export function AssetDetailPage() {
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <div className={`p-6 rounded-lg shadow-md ${
-        theme === "dark" ? "bg-gray-800" : "bg-white"
-      }`}>
-        <div className={`p-4 mb-4 rounded-md ${
-          theme === "dark" ? "bg-red-900/20" : "bg-red-50"
-        }`}>
+      <div className={`p-6 rounded-lg shadow-md ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
+        <div className={`p-4 mb-4 rounded-md ${getThemeClass(theme, "bg-red-900/20", "bg-red-50")}`}>
           <p className="text-red-500">{error}</p>
         </div>
         <div className="flex space-x-3">
           <button
             onClick={() => window.location.reload()}
-            className={`px-4 py-2 rounded-md ${
-              theme === "dark" 
-                ? "bg-blue-600 hover:bg-blue-700" 
-                : "bg-blue-500 hover:bg-blue-600"
-            } text-white`}
+            className={`px-4 py-2 rounded-md ${getThemeClass(theme, "bg-blue-600 hover:bg-blue-700", "bg-blue-500 hover:bg-blue-600")} text-white`}
           >
             Coba Lagi
           </button>
           <Link
             to="/assets"
-            className={`px-4 py-2 rounded-md ${
-              theme === "dark" 
-                ? "bg-gray-700 hover:bg-gray-600" 
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
+            className={`px-4 py-2 rounded-md ${getThemeClass(theme, "bg-gray-700 hover:bg-gray-600", "bg-gray-200 hover:bg-gray-300")}`}
           >
             Kembali ke Daftar Aset
           </Link>
@@ -272,19 +625,14 @@ export function AssetDetailPage() {
     );
   }
 
+  // Asset not found
   if (!asset) {
     return (
-      <div className={`p-6 rounded-lg shadow-md ${
-        theme === "dark" ? "bg-gray-800" : "bg-white"
-      }`}>
+      <div className={`p-6 rounded-lg shadow-md ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
         <p>Data aset tidak tersedia</p>
         <Link
           to="/assets"
-          className={`mt-4 inline-block px-4 py-2 rounded-md ${
-            theme === "dark" 
-              ? "bg-blue-600 hover:bg-blue-700" 
-              : "bg-blue-500 hover:bg-blue-600"
-          } text-white`}
+          className={`mt-4 inline-block px-4 py-2 rounded-md ${getThemeClass(theme, "bg-blue-600 hover:bg-blue-700", "bg-blue-500 hover:bg-blue-600")} text-white`}
         >
           Kembali ke Daftar Aset
         </Link>
@@ -295,9 +643,7 @@ export function AssetDetailPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className={`text-3xl font-bold ${
-          theme === "dark" ? "text-white" : "text-gray-800"
-        }`}>
+        <h1 className={`text-3xl font-bold ${getThemeClass(theme, "text-white", "text-gray-800")}`}>
           Detail Aset
         </h1>
         <div className="flex gap-3">
@@ -320,7 +666,7 @@ export function AssetDetailPage() {
             Edit
           </Link>
           <button
-            onClick={handleDelete}
+            onClick={() => setShowDeleteModal(true)}
             className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition-colors duration-200 dark:bg-red-700 dark:hover:bg-red-600 flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -331,349 +677,52 @@ export function AssetDetailPage() {
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${
-        theme === "dark" ? "text-gray-300" : "text-gray-700"
-      }`}>
-        {/* Card Informasi Utama */}
-        <div className={`lg:col-span-2 rounded-lg shadow-md p-6 ${
-          theme === "dark" ? "bg-gray-800" : "bg-white"
-        }`}>
-          <h2 className={`text-xl font-semibold mb-4 ${
-            theme === "dark" ? "text-white" : "text-gray-800"
-          }`}>
-            Informasi Aset
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Kode Aset
-              </p>
-              <p className={`text-lg font-semibold ${
-                theme === "dark" ? "text-blue-400" : "text-blue-600"
-              }`}>
-                {asset.kode_aset}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Nama Barang
-              </p>
-              <p className="text-base">
-                {asset.item?.nama_item || 'N/A'}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Merk
-              </p>
-              <p className="text-base">
-                {asset.merk}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Tipe/Model
-              </p>
-              <p className="text-base">
-                {asset.tipe_model}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Kategori
-              </p>
-              <p className="text-base">
-                {asset.item?.kategori?.nama_kategori || 'N/A'}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Tanggal Perolehan
-              </p>
-              <p className="text-base">
-                {new Date(asset.tgl_perolehan).toLocaleDateString('id-ID')}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Sumber Dana
-              </p>
-              <p className="text-base">
-                {asset.sumber_dana}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Nomor Urut
-              </p>
-              <p className="text-base">
-                {asset.nomor_urut}
-              </p>
-            </div>
-          </div>
-          
-          <div className="mt-4">
-            <p className={`text-sm font-medium ${
-              theme === "dark" ? "text-gray-400" : "text-gray-500"
-            }`}>
-              Spesifikasi
-            </p>
-            <p className="text-base">
-              {asset.spesifikasi || '-'}
+      {printError && (
+        <div className={`mb-6 p-4 rounded-md ${getThemeClass(theme, "bg-yellow-900/20", "bg-yellow-50")}`}>
+          <div className="flex">
+            <svg className={`w-5 h-5 mr-2 mt-0.5 ${getThemeClass(theme, "text-yellow-400", "text-yellow-500")}`} fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <p className={`text-sm ${getThemeClass(theme, "text-yellow-400", "text-yellow-700")}`}>
+              {printError}
             </p>
           </div>
         </div>
+      )}
 
-        {/* Card Status dan Kondisi */}
-        <div className={`rounded-lg shadow-md p-6 ${
-          theme === "dark" ? "bg-gray-800" : "bg-white"
-        }`}>
-          <h2 className={`text-xl font-semibold mb-4 ${
-            theme === "dark" ? "text-white" : "text-gray-800"
-          }`}>
-            Status & Kondisi
-          </h2>
-          
-          <div className="space-y-4">
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Status Aset
-              </p>
-              <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                asset.status_aset === 'Tersedia' 
-                  ? theme === "dark" 
-                    ? "bg-green-800 text-green-100" 
-                    : "bg-green-100 text-green-800"
-                  : asset.status_aset === 'Dipinjam'
-                  ? theme === "dark" 
-                    ? "bg-yellow-800 text-yellow-100" 
-                    : "bg-yellow-100 text-yellow-800"
-                  : theme === "dark" 
-                    ? "bg-red-800 text-red-100" 
-                    : "bg-red-100 text-red-800"
-              }`}>
-                {asset.status_aset}
-              </span>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Kondisi Terakhir
-              </p>
-              <p className="text-base">
-                {asset.kondisi_terakhir || '-'}
-              </p>
-            </div>
-          </div>
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${getThemeClass(theme, "text-gray-300", "text-gray-700")}`}>
+        <div className="lg:col-span-2">
+          <AssetMainInfo asset={asset} theme={theme} />
         </div>
-
-        {/* Card Lokasi */}
-        <div className={`lg:col-span-2 rounded-lg shadow-md p-6 ${
-          theme === "dark" ? "bg-gray-800" : "bg-white"
-        }`}>
-          <h2 className={`text-xl font-semibold mb-4 ${
-            theme === "dark" ? "text-white" : "text-gray-800"
-          }`}>
-            Lokasi Aset
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Ruangan
-              </p>
-              <p className="text-base">
-                {asset.lokasi?.nama_ruangan || 'N/A'}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Kode Ruangan
-              </p>
-              <p className="text-base">
-                {asset.lokasi?.kode_ruangan || 'N/A'}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Lantai
-              </p>
-              <p className="text-base">
-                {asset.lokasi?.lantai || '-'}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Gedung
-              </p>
-              <p className="text-base">
-                {asset.lokasi?.gedung?.nama_gedung || 'N/A'}
-              </p>
-            </div>
-          </div>
+        
+        <div>
+          <AssetStatus asset={asset} theme={theme} />
         </div>
-
-        {/* Card Unit Kerja */}
-        <div className={`rounded-lg shadow-md p-6 ${
-          theme === "dark" ? "bg-gray-800" : "bg-white"
-        }`}>
-          <h2 className={`text-xl font-semibold mb-4 ${
-            theme === "dark" ? "text-white" : "text-gray-800"
-          }`}>
-            Unit Kerja
-          </h2>
-          
-          <div className="space-y-4">
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Unit Kerja
-              </p>
-              <p className="text-base">
-                {asset.unitKerja?.nama_unit || 'N/A'}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Kode Unit
-              </p>
-              <p className="text-base">
-                {asset.unitKerja?.kode_unit || 'N/A'}
-              </p>
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Unit Utama
-              </p>
-              <p className="text-base">
-                {asset.unitKerja?.unitUtama?.nama_unit_utama || 'N/A'}
-              </p>
-            </div>
-          </div>
+        
+        <div className="lg:col-span-2">
+          <AssetLocation asset={asset} theme={theme} />
         </div>
-
-        {/* Card Dokumen */}
-        <div className={`lg:col-span-3 rounded-lg shadow-md p-6 ${
-          theme === "dark" ? "bg-gray-800" : "bg-white"
-        }`}>
-          <h2 className={`text-xl font-semibold mb-4 ${
-            theme === "dark" ? "text-white" : "text-gray-800"
-          }`}>
-            Dokumen Terkait
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p className={`text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                QR Code
-              </p>
-              {asset.file_qrcode ? (
-                <div className="flex items-center">
-                  <button
-                    onClick={handlePrintQR}
-                    className={`px-4 py-2 rounded-md flex items-center ${
-                      theme === "dark" 
-                        ? "bg-blue-700 hover:bg-blue-600" 
-                        : "bg-blue-100 hover:bg-blue-200"
-                    }`}
-                  >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Lihat QR Code
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm italic">Belum ada QR Code</p>
-              )}
-            </div>
-            
-            <div>
-              <p className={`text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}>
-                Dokumen Pengadaan
-              </p>
-              {asset.file_pengadaan ? (
-                <a
-                  href={asset.file_pengadaan}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`px-4 py-2 rounded-md inline-flex items-center ${
-                    theme === "dark" 
-                      ? "bg-blue-700 hover:bg-blue-600" 
-                      : "bg-blue-100 hover:bg-blue-200"
-                  }`}
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Lihat Dokumen
-                </a>
-              ) : (
-                <p className="text-sm italic">Belum ada dokumen pengadaan</p>
-              )}
-            </div>
-          </div>
+        
+        <div>
+          <AssetUnitKerja asset={asset} theme={theme} />
+        </div>
+        
+        <div className="lg:col-span-3">
+          <AssetDocuments 
+            asset={asset} 
+            theme={theme}
+            onPrintQR={handlePrintQR}
+            documentLoading={documentLoading}
+            documentError={documentError}
+            onViewDocument={handleViewDocument}
+          />
         </div>
       </div>
 
       <div className="mt-6">
         <Link
           to="/assets"
-          className={`px-4 py-2 rounded-md inline-flex items-center ${
-            theme === "dark" 
-              ? "bg-gray-700 hover:bg-gray-600" 
-              : "bg-gray-200 hover:bg-gray-300"
-          }`}
+          className={`px-4 py-2 rounded-md inline-flex items-center ${getThemeClass(theme, "bg-gray-700 hover:bg-gray-600", "bg-gray-200 hover:bg-gray-300")}`}
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -681,6 +730,48 @@ export function AssetDetailPage() {
           Kembali ke Daftar Aset
         </Link>
       </div>
+
+      {/* Modal Konfirmasi Hapus */}
+      {showDeleteModal && (
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Konfirmasi Hapus Aset"
+        >
+          <div className="p-4">
+            <p className={`mb-6 ${getThemeClass(theme, "text-gray-300", "text-gray-700")}`}>
+              Apakah Anda yakin ingin menghapus aset ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className={`px-4 py-2 rounded-md ${getThemeClass(theme, "bg-gray-700 hover:bg-gray-600", "bg-gray-200 hover:bg-gray-300")}`}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className={`px-4 py-2 rounded-md flex items-center ${
+                  isDeleting 
+                    ? "bg-red-400 cursor-not-allowed" 
+                    : "bg-red-600 hover:bg-red-700"
+                } text-white`}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Menghapus...
+                  </>
+                ) : (
+                  'Hapus Aset'
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

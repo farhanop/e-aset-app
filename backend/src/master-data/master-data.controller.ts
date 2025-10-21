@@ -11,8 +11,8 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
-  Query, // Tambahkan ini
-  BadRequestException, // Tambahkan ini
+  Query,
+  ValidationPipe,
 } from '@nestjs/common';
 import { MasterDataService } from './master-data.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -22,6 +22,8 @@ import { CreateUnitKerjaDto } from './dto/create-unit-kerja.dto';
 import { UpdateUnitKerjaDto } from './dto/update-unit-kerja.dto';
 import { CreateGedungDto } from './dto/create-gedung.dto';
 import { UpdateGedungDto } from './dto/update-gedung.dto';
+import { CreateKampusDto } from './dto/create-kampus.dto';
+import { UpdateKampusDto } from './dto/update-kampus.dto';
 import { CreateLokasiDto } from './dto/create-lokasi.dto';
 import { UpdateLokasiDto } from './dto/update-lokasi.dto';
 import { CreateKategoriItemDto } from './dto/create-kategori-item.dto';
@@ -34,8 +36,37 @@ import { UpdateMasterItemDto } from './dto/update-master-item.dto';
 export class MasterDataController {
   constructor(private readonly masterDataService: MasterDataService) {}
 
-  // === KODE YANG SUDAH ADA TETAP DI BAWAH INI ===
-  
+  // === KAMPUS ===
+  @Post('kampus')
+  @HttpCode(HttpStatus.CREATED)
+  async createKampus(@Body(ValidationPipe) createKampusDto: CreateKampusDto) {
+    return this.masterDataService.createKampus(createKampusDto);
+  }
+
+  @Get('kampus')
+  async findAllKampus() {
+    return this.masterDataService.findAllKampus();
+  }
+
+  @Get('kampus/:id')
+  async findOneKampus(@Param('id', ParseIntPipe) id: number) {
+    return this.masterDataService.findOneKampus(id);
+  }
+
+  @Patch('kampus/:id')
+  async updateKampus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(ValidationPipe) updateKampusDto: UpdateKampusDto,
+  ) {
+    return this.masterDataService.updateKampus(id, updateKampusDto);
+  }
+
+  @Delete('kampus/:id')
+  @HttpCode(HttpStatus.OK)
+  async removeKampus(@Param('id', ParseIntPipe) id: number) {
+    return this.masterDataService.removeKampus(id);
+  }
+
   // === UNIT UTAMA ===
   @Get('unit-utama')
   async findAllUnitUtama() {
@@ -57,7 +88,7 @@ export class MasterDataController {
   }
 
   @Delete('unit-utama/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async removeUnitUtama(@Param('id', ParseIntPipe) id: number) {
     return this.masterDataService.removeUnitUtama(id);
   }
@@ -83,7 +114,7 @@ export class MasterDataController {
   }
 
   @Delete('unit-kerja/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async removeUnitKerja(@Param('id', ParseIntPipe) id: number) {
     return this.masterDataService.removeUnitKerja(id);
   }
@@ -92,6 +123,11 @@ export class MasterDataController {
   @Get('gedung')
   async findAllGedung() {
     return this.masterDataService.findAllGedung();
+  }
+
+  @Get('gedung/by-kampus/:id_kampus')
+  async findGedungByKampus(@Param('id_kampus', ParseIntPipe) id_kampus: number) {
+    return this.masterDataService.findGedungByKampus(id_kampus);
   }
 
   @Post('gedung')
@@ -109,7 +145,7 @@ export class MasterDataController {
   }
 
   @Delete('gedung/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async removeGedung(@Param('id', ParseIntPipe) id: number) {
     return this.masterDataService.removeGedung(id);
   }
@@ -118,6 +154,11 @@ export class MasterDataController {
   @Get('lokasi')
   async findAllLokasi() {
     return this.masterDataService.findAllLokasi();
+  }
+
+  @Get('lokasi/by-gedung/:id_gedung')
+  async findLokasiByGedung(@Param('id_gedung', ParseIntPipe) id_gedung: number) {
+    return this.masterDataService.findLokasiByGedung(id_gedung);
   }
 
   @Post('lokasi')
@@ -135,7 +176,7 @@ export class MasterDataController {
   }
 
   @Delete('lokasi/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async removeLokasi(@Param('id', ParseIntPipe) id: number) {
     return this.masterDataService.removeLokasi(id);
   }
@@ -161,7 +202,7 @@ export class MasterDataController {
   }
 
   @Delete('kategori-item/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async removeKategoriItem(@Param('id', ParseIntPipe) id: number) {
     return this.masterDataService.removeKategoriItem(id);
   }
@@ -187,26 +228,17 @@ export class MasterDataController {
   }
 
   @Delete('master-item/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async removeMasterItem(@Param('id', ParseIntPipe) id: number) {
     return this.masterDataService.removeMasterItem(id);
   }
 
-  // TAMBAHKAN 2 ENDPOINT BARU UNTUK FITUR LAPORAN DI BAWAH INI
+  // === ENDPOINT UNTUK FITUR LAPORAN ===
   
   // Endpoint untuk mendapatkan unit kerja berdasarkan gedung
   @Get('unit-kerja/by-gedung/:id_gedung')
   async findUnitKerjaByGedung(@Param('id_gedung', ParseIntPipe) id_gedung: number) {
-    try {
-      const unitKerjaList = await this.masterDataService.findUnitKerjaByGedung(id_gedung);
-      return {
-        success: true,
-        message: `Berhasil mendapatkan data unit kerja untuk gedung ID ${id_gedung}`,
-        data: unitKerjaList
-      };
-    } catch (error) {
-      throw new BadRequestException(`Gagal mendapatkan data unit kerja: ${error.message}`);
-    }
+    return this.masterDataService.findUnitKerjaByGedung(id_gedung);
   }
 
   // Endpoint untuk mendapatkan lokasi berdasarkan gedung dan unit kerja
@@ -215,15 +247,6 @@ export class MasterDataController {
     @Query('gedungId', ParseIntPipe) gedungId: number,
     @Query('unitKerjaId', ParseIntPipe) unitKerjaId: number
   ) {
-    try {
-      const lokasiList = await this.masterDataService.findLokasiByGedungAndUnit(gedungId, unitKerjaId);
-      return {
-        success: true,
-        message: `Berhasil mendapatkan data lokasi untuk gedung ID ${gedungId} dan unit kerja ID ${unitKerjaId}`,
-        data: lokasiList
-      };
-    } catch (error) {
-      throw new BadRequestException(`Gagal mendapatkan data lokasi: ${error.message}`);
-    }
+    return this.masterDataService.findLokasiByGedungAndUnit(gedungId, unitKerjaId);
   }
 }

@@ -1,4 +1,4 @@
-// src/assets/assets.controller.ts
+// backend/src/assets/assets.controller.ts
 import {
   Controller,
   Get,
@@ -26,11 +26,13 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { join } from 'path';
+import { readdirSync } from 'fs';
 import * as qr from 'qrcode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { Response } from 'express';
-import type { Multer } from 'multer'; // Perbaikan import ini
+import type { Multer } from 'multer';
 
 @Controller('assets')
 @UseGuards(JwtAuthGuard)
@@ -71,6 +73,20 @@ export class AssetsController {
       url: `/uploads/foto-barang/${file.filename}`,
       filename: file.filename,
     };
+  }
+
+  @Get('qrcodes')
+  getQRCodes() {
+    const qrcodesDir = join(process.cwd(), 'uploads', 'qrcodes');
+    try {
+      const files = readdirSync(qrcodesDir);
+      return files.map(file => ({
+        filename: file,
+        url: `/uploads/qrcodes/${file}`
+      }));
+    } catch (error) {
+      throw new NotFoundException('Folder QR codes tidak ditemukan');
+    }
   }
 
   @Post()
@@ -174,18 +190,17 @@ export class AssetsController {
 
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateAssetDto: UpdateAssetDto) {
-    // Konversi UpdateAssetDto ke Partial<CreateAssetDto> dengan menangani perbedaan tipe data
     const createAssetDto: Partial<CreateAssetDto> = {
       id_item: updateAssetDto.id_item,
       id_lokasi: updateAssetDto.id_lokasi,
       id_unit_kerja: updateAssetDto.id_unit_kerja,
-      id_group: updateAssetDto.id_group ?? undefined, // Handle null -> undefined
+      id_group: updateAssetDto.id_group ?? undefined,
       merk: updateAssetDto.merk,
       tipe_model: updateAssetDto.tipe_model,
       spesifikasi: updateAssetDto.spesifikasi,
       tgl_perolehan: updateAssetDto.tgl_perolehan,
       sumber_dana: updateAssetDto.sumber_dana,
-      jumlah: updateAssetDto.jumlah, // Sekarang property ini sudah ada
+      jumlah: updateAssetDto.jumlah,
       status_aset: updateAssetDto.status_aset,
       kondisi_terakhir: updateAssetDto.kondisi_terakhir,
       foto_barang: updateAssetDto.foto_barang,
@@ -196,18 +211,17 @@ export class AssetsController {
 
   @Put(':id')
   async updateFull(@Param('id') id: string, @Body() updateAssetDto: UpdateAssetDto) {
-    // Konversi UpdateAssetDto ke Partial<CreateAssetDto> dengan menangani perbedaan tipe data
     const createAssetDto: Partial<CreateAssetDto> = {
       id_item: updateAssetDto.id_item,
       id_lokasi: updateAssetDto.id_lokasi,
       id_unit_kerja: updateAssetDto.id_unit_kerja,
-      id_group: updateAssetDto.id_group ?? undefined, // Handle null -> undefined
+      id_group: updateAssetDto.id_group ?? undefined,
       merk: updateAssetDto.merk,
       tipe_model: updateAssetDto.tipe_model,
       spesifikasi: updateAssetDto.spesifikasi,
       tgl_perolehan: updateAssetDto.tgl_perolehan,
       sumber_dana: updateAssetDto.sumber_dana,
-      jumlah: updateAssetDto.jumlah, // Sekarang property ini sudah ada
+      jumlah: updateAssetDto.jumlah,
       status_aset: updateAssetDto.status_aset,
       kondisi_terakhir: updateAssetDto.kondisi_terakhir,
       foto_barang: updateAssetDto.foto_barang,
@@ -304,6 +318,49 @@ export class AssetsController {
       };
     } catch (error) {
       throw new BadRequestException(`Gagal mendapatkan data aset: ${error.message}`);
+    }
+  }
+
+  // Endpoints untuk alur filter Kampus -> Gedung -> Lokasi
+  @Get('kampus')
+  async findAllKampus() {
+    try {
+      const kampusList = await this.assetsService.findAllKampus();
+      return {
+        success: true,
+        message: 'Berhasil mendapatkan data kampus',
+        data: kampusList
+      };
+    } catch (error) {
+      throw new BadRequestException(`Gagal mendapatkan data kampus: ${error.message}`);
+    }
+  }
+
+  @Get('gedung/by-kampus/:id_kampus')
+  async findGedungByKampus(@Param('id_kampus', ParseIntPipe) id_kampus: number) {
+    try {
+      const gedungList = await this.assetsService.findGedungByKampus(id_kampus);
+      return {
+        success: true,
+        message: `Berhasil mendapatkan data gedung untuk kampus ID ${id_kampus}`,
+        data: gedungList
+      };
+    } catch (error) {
+      throw new BadRequestException(`Gagal mendapatkan data gedung: ${error.message}`);
+    }
+  }
+
+  @Get('lokasi/by-gedung/:id_gedung')
+  async findLokasiByGedung(@Param('id_gedung', ParseIntPipe) id_gedung: number) {
+    try {
+      const lokasiList = await this.assetsService.findLokasiByGedung(id_gedung);
+      return {
+        success: true,
+        message: `Berhasil mendapatkan data lokasi untuk gedung ID ${id_gedung}`,
+        data: lokasiList
+      };
+    } catch (error) {
+      throw new BadRequestException(`Gagal mendapatkan data lokasi: ${error.message}`);
     }
   }
 }

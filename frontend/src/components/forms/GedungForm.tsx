@@ -1,196 +1,292 @@
-import { useState, useEffect } from "react";
-import { useTheme } from "../../contexts/ThemeContext";
+// frontend/src/components/forms/GedungForm.tsx
+import React, { useState, useEffect } from 'react';
+import api from '../../api/axios';
+import { useTheme } from '../../contexts/ThemeContext';
+
+interface Kampus { 
+  id_kampus: number; 
+  nama_kampus: string; 
+  kode_kampus: string;
+}
 
 interface GedungData {
   id_gedung?: number;
   kode_gedung: string;
   nama_gedung: string;
+  id_kampus?: number | null;
 }
 
-interface FormProps {
-  initialData: Partial<GedungData> | null;
-  onSave: (data: GedungData) => void;
-  onCancel: () => void;
+interface GedungFormProps {
+  initialData?: GedungData | null;
+  onSubmit: (data: Omit<GedungData, 'id_gedung'>) => Promise<void>;
+  isLoading: boolean;
+  onCancel?: () => void;
 }
 
-export function GedungForm({ initialData, onSave, onCancel }: FormProps) {
+// Tipe untuk error
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+export const GedungForm: React.FC<GedungFormProps> = ({
+  initialData,
+  onSubmit,
+  isLoading,
+  onCancel,
+}) => {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState({
-    kode_gedung: "",
-    nama_gedung: "",
+  const [formData, setFormData] = useState<Omit<GedungData, 'id_gedung'>>({
+    kode_gedung: '',
+    nama_gedung: '',
+    id_kampus: null,
   });
-  const [loading, setLoading] = useState(false);
+  const [kampusList, setKampusList] = useState<Kampus[]>([]);
+  const [loadingKampus, setLoadingKampus] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const isEditMode = !!initialData?.id_gedung;
+
+  useEffect(() => {
+    const fetchKampus = async () => {
+      setLoadingKampus(true);
+      try {
+        console.log('Fetching kampus data...');
+        const response = await api.get('/master-data/kampus');
+        console.log('Kampus response:', response.data);
+        
+        // Pastikan response.data.data ada, jika tidak, gunakan response.data langsung
+        const kampusData = response.data.data || response.data || [];
+        console.log('Processed kampus data:', kampusData);
+        
+        setKampusList(kampusData);
+      } catch (error) {
+        console.error("Gagal mengambil data kampus:", error);
+        // Tambahkan handling error yang lebih baik
+        setErrors({
+          id_kampus: 'Gagal memuat data kampus. Silakan coba lagi.'
+        });
+      } finally {
+        setLoadingKampus(false);
+      }
+    };
+
+    fetchKampus();
+  }, []);
 
   useEffect(() => {
     if (initialData) {
+      console.log('Setting initial data:', initialData);
       setFormData({
-        kode_gedung: initialData.kode_gedung || "",
-        nama_gedung: initialData.nama_gedung || "",
+        kode_gedung: initialData.kode_gedung || '',
+        nama_gedung: initialData.nama_gedung || '',
+        id_kampus: initialData.id_kampus || null,
       });
     } else {
-      setFormData({ kode_gedung: "", nama_gedung: "" });
+       setFormData({ kode_gedung: '', nama_gedung: '', id_kampus: null });
     }
+    // Reset errors when initialData changes
     setErrors({});
   }, [initialData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    console.log(`handleChange: ${name} = ${value}`);
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'id_kampus' ? (value ? parseInt(value, 10) : null) : value
+    }));
+    
+    // Clear error when user changes selection
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
     if (!formData.kode_gedung.trim()) {
-      newErrors.kode_gedung = "Kode gedung wajib diisi";
-    } else if (formData.kode_gedung.length > 20) {
-      newErrors.kode_gedung = "Kode gedung maksimal 20 karakter";
+      newErrors.kode_gedung = 'Kode gedung wajib diisi';
     }
     
     if (!formData.nama_gedung.trim()) {
-      newErrors.nama_gedung = "Nama gedung wajib diisi";
-    } else if (formData.nama_gedung.length > 100) {
-      newErrors.nama_gedung = "Nama gedung maksimal 100 karakter";
+      newErrors.nama_gedung = 'Nama gedung wajib diisi';
     }
     
+    if (!formData.id_kampus) {
+      newErrors.id_kampus = 'Kampus wajib dipilih';
+    }
+    
+    console.log('Validation errors:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log('Form submitted with data:', formData);
     
-    if (!validateForm()) {
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      onSave(formData as GedungData);
-    } catch (error: any) {
-      console.error("Error saving gedung:", error);
-      
-      if (error.response?.status === 400) {
-        const errorMessage = error.response?.data?.message || 
-                          Object.values(error.response?.data?.errors || {}).join(", ") || 
-                          "Data tidak valid";
-        alert(`Gagal menyimpan data: ${errorMessage}`);
-      } else if (error.response?.status === 409) {
-        alert("Kode gedung sudah digunakan");
-      } else {
-        alert("Gagal menyimpan data. Silakan coba lagi.");
+    if (validateForm()) {
+      try {
+        await onSubmit(formData);
+      } catch (error) {
+        console.error('Error submitting form:', error);
+        
+        // Tambahkan handling error yang lebih baik dengan tipe yang jelas
+        const apiError = error as ApiError;
+        
+        if (apiError.response?.data?.message) {
+          // Handle API errors
+          setErrors({
+            submit: apiError.response.data.message
+          });
+        } else if (apiError.message) {
+          // Handle network errors
+          setErrors({
+            submit: apiError.message
+          });
+        } else {
+          // Handle unknown errors
+          setErrors({
+            submit: 'Terjadi kesalahan jaringan. Silakan coba lagi.'
+          });
+        }
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="kode_gedung" className={`block text-sm font-medium ${
-          theme === "dark" ? "text-gray-300" : "text-gray-700"
-        }`}>
-          Kode Gedung <span className="text-red-500">*</span>
+        <label htmlFor="kode_gedung" className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+          Kode Gedung *
         </label>
-        <div className="mt-1">
-          <input
-            id="kode_gedung"
-            type="text"
-            name="kode_gedung"
-            value={formData.kode_gedung}
-            onChange={handleChange}
-            required
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.kode_gedung 
-                ? "border-red-500" 
-                : theme === "dark" 
-                  ? "border-gray-600 bg-gray-700 text-white" 
-                  : "border-gray-300"
-            } px-3 py-2`}
-            placeholder="Masukkan kode gedung"
-          />
-        </div>
+        <input 
+          type="text" 
+          id="kode_gedung" 
+          name="kode_gedung" 
+          value={formData.kode_gedung} 
+          onChange={handleChange} 
+          maxLength={20} 
+          disabled={isLoading} 
+          className={`block w-full rounded-md shadow-sm sm:text-sm ${
+            errors.kode_gedung
+              ? theme === 'dark'
+                ? 'bg-red-900/20 border-red-500 text-red-200'
+                : 'bg-red-50 border-red-300 text-red-900'
+              : theme === 'dark'
+                ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500'
+                : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500'
+          } border`}
+        />
         {errors.kode_gedung && (
-          <p className={`mt-1 text-sm ${
-            theme === "dark" ? "text-red-400" : "text-red-600"
-          }`}>
+          <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
             {errors.kode_gedung}
           </p>
         )}
       </div>
       
       <div>
-        <label htmlFor="nama_gedung" className={`block text-sm font-medium ${
-          theme === "dark" ? "text-gray-300" : "text-gray-700"
-        }`}>
-          Nama Gedung <span className="text-red-500">*</span>
+        <label htmlFor="nama_gedung" className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+          Nama Gedung *
         </label>
-        <div className="mt-1">
-          <input
-            id="nama_gedung"
-            type="text"
-            name="nama_gedung"
-            value={formData.nama_gedung}
-            onChange={handleChange}
-            required
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.nama_gedung 
-                ? "border-red-500" 
-                : theme === "dark" 
-                  ? "border-gray-600 bg-gray-700 text-white" 
-                  : "border-gray-300"
-            } px-3 py-2`}
-            placeholder="Masukkan nama gedung"
-          />
-        </div>
+        <input 
+          type="text" 
+          id="nama_gedung" 
+          name="nama_gedung" 
+          value={formData.nama_gedung} 
+          onChange={handleChange} 
+          maxLength={100} 
+          disabled={isLoading} 
+          className={`block w-full rounded-md shadow-sm sm:text-sm ${
+            errors.nama_gedung
+              ? theme === 'dark'
+                ? 'bg-red-900/20 border-red-500 text-red-200'
+                : 'bg-red-50 border-red-300 text-red-900'
+              : theme === 'dark'
+                ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500'
+                : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500'
+          } border`}
+        />
         {errors.nama_gedung && (
-          <p className={`mt-1 text-sm ${
-            theme === "dark" ? "text-red-400" : "text-red-600"
-          }`}>
+          <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
             {errors.nama_gedung}
           </p>
         )}
       </div>
       
-      <div className="flex justify-end space-x-3 pt-5">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={loading}
-          className={`px-4 py-2 text-sm font-medium rounded-md ${
-            theme === "dark"
-              ? "text-gray-200 bg-gray-600 hover:bg-gray-700"
-              : "text-gray-700 bg-gray-100 hover:bg-gray-200"
-          } disabled:opacity-50 transition-colors duration-200`}
+      <div>
+        <label htmlFor="id_kampus" className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+          Lokasi *
+        </label>
+        <select
+          id="id_kampus"
+          name="id_kampus"
+          value={formData.id_kampus || ''}
+          onChange={handleChange}
+          disabled={isLoading || loadingKampus}
+          className={`block w-full rounded-md shadow-sm sm:text-sm ${
+            errors.id_kampus
+              ? theme === 'dark'
+                ? 'bg-red-900/20 border-red-500 text-red-200'
+                : 'bg-red-50 border-red-300 text-red-900'
+              : theme === 'dark'
+                ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500'
+                : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500'
+          } border`}
         >
-          Batal
-        </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className={`px-4 py-2 text-sm font-medium text-white rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 flex items-center transition-colors duration-200 ${
-            theme === "dark" ? "hover:bg-blue-600" : "hover:bg-blue-700"
+          <option value="">{loadingKampus ? 'Memuat kampus...' : '-- Pilih Kampus --'}</option>
+          {kampusList.length > 0 ? (
+            kampusList.map(kampus => (
+              <option key={kampus.id_kampus} value={kampus.id_kampus}>
+                {kampus.kode_kampus} - {kampus.nama_kampus}
+              </option>
+            ))
+          ) : (
+            <option value="" disabled>Tidak ada data kampus</option>
+          )}
+        </select>
+        {errors.id_kampus && (
+          <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+            {errors.id_kampus}
+          </p>
+        )}
+        {errors.submit && (
+          <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+            {errors.submit}
+          </p>
+        )}
+      </div>
+      
+      <div className="flex justify-end space-x-3 pt-2">
+        {onCancel && (
+          <button 
+            type="button" 
+            onClick={onCancel} 
+            disabled={isLoading} 
+            className={`px-4 py-2 text-sm font-medium rounded-md border ${
+              theme === 'dark' 
+                ? 'bg-gray-600 text-gray-200 hover:bg-gray-500 border-gray-500' 
+                : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'
+            }`}
+          >
+            Batal
+          </button>
+        )}
+        <button 
+          type="submit" 
+          disabled={isLoading} 
+          className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 ${
+            isLoading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
-          {loading ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Memproses...
-            </>
-          ) : isEditMode ? "Simpan Perubahan" : "Buat Baru"}
+          {isLoading ? 'Menyimpan...' : (initialData ? 'Update Gedung' : 'Tambah Gedung')}
         </button>
       </div>
     </form>
   );
-}
+};

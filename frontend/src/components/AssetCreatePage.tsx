@@ -1,9 +1,10 @@
 // src/pages/AssetCreatePage.tsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Select, { StylesConfig } from 'react-select';
 import api from '../api/axios';
 import { useTheme } from '../contexts/ThemeContext';
-import { QRCodeGenerator } from '../components/forms/QRCodeGenerator';
+import { QRCodeGenerator } from './qr/QRCodeGenerator';
 import { Modal } from '../components/Modal';
 
 // Tipe data untuk dropdown
@@ -13,21 +14,30 @@ interface MasterItem {
   kode_item: string;
   metode_pelacakan: string;
 }
+interface Kampus { 
+  id_kampus: number; 
+  nama_kampus: string;
+  kode_kampus: string;
+}
+interface Gedung { 
+  id_gedung: number; 
+  nama_gedung: string;
+  kode_gedung: string;
+  id_kampus: number;
+}
 interface Lokasi { 
   id_lokasi: number; 
   nama_ruangan: string;
   kode_ruangan: string;
   lantai: number;
-  gedung?: {
-    id_gedung: number;
-    kode_gedung: string;
-    nama_gedung: string;
-  };
+  id_gedung: number;
+  id_unit_kerja?: number;
 }
 interface UnitKerja { 
   id_unit_kerja: number; 
   nama_unit: string;
   kode_unit: string;
+  id_unit_utama: number;
   unitUtama?: {
     id_unit_utama: number;
     kode_unit_utama: string;
@@ -35,13 +45,20 @@ interface UnitKerja {
   };
 }
 
+// Tipe untuk opsi react-select
+interface SelectOption {
+  value: string;
+  label: string;
+  data?: any;
+}
+
 export function AssetCreatePage() {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
   const [formData, setFormData] = useState({
     id_item: '',
+    id_kampus: '',
+    id_gedung: '',
     id_lokasi: '',
     id_unit_kerja: '',
     id_group: '',
@@ -57,6 +74,8 @@ export function AssetCreatePage() {
 
   // State untuk menyimpan data dropdown
   const [items, setItems] = useState<MasterItem[]>([]);
+  const [kampus, setKampus] = useState<Kampus[]>([]);
+  const [gedung, setGedung] = useState<Gedung[]>([]);
   const [lokasi, setLokasi] = useState<Lokasi[]>([]);
   const [unitKerja, setUnitKerja] = useState<UnitKerja[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,12 +83,6 @@ export function AssetCreatePage() {
   const [error, setError] = useState<string>('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [previewData, setPreviewData] = useState<any>(null);
-
-  // State untuk input manual
-  const [itemInput, setItemInput] = useState('');
-  const [lokasiInput, setLokasiInput] = useState('');
-  const [unitKerjaInput, setUnitKerjaInput] = useState('');
-  const [groupInput, setGroupInput] = useState('');
 
   // State untuk QR Code preview
   const [qrCodePreview, setQrCodePreview] = useState<string>('');
@@ -79,21 +92,70 @@ export function AssetCreatePage() {
   const [createdAssetId, setCreatedAssetId] = useState<number | null>(null);
   const [createdAssetCount, setCreatedAssetCount] = useState<number>(0);
 
-  // State untuk upload file
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [isUploading, setIsUploading] = useState<boolean>(false);
+  // Opsi untuk react-select
+  const [itemOptions, setItemOptions] = useState<SelectOption[]>([]);
+  const [kampusOptions, setKampusOptions] = useState<SelectOption[]>([]);
+  const [gedungOptions, setGedungOptions] = useState<SelectOption[]>([]);
+  const [lokasiOptions, setLokasiOptions] = useState<SelectOption[]>([]);
+  const [unitKerjaOptions, setUnitKerjaOptions] = useState<SelectOption[]>([]);
+  const [groupOptions] = useState<SelectOption[]>([
+    { value: 'Group A', label: 'Group A' },
+    { value: 'Group B', label: 'Group B' },
+    { value: 'Group C', label: 'Group C' },
+    { value: 'Group D', label: 'Group D' },
+    { value: 'Group E', label: 'Group E' },
+  ]);
+
+  // Custom styles untuk react-select berdasarkan tema
+  const selectStyles: StylesConfig<SelectOption, false> = {
+    control: (provided, state) => ({
+      ...provided,
+      backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
+      borderColor: fieldErrors.id_item ? '#ef4444' : theme === 'dark' ? '#4b5563' : '#d1d5db',
+      color: theme === 'dark' ? '#fff' : '#1f2937',
+      '&:hover': {
+        borderColor: '#3b82f6',
+      },
+      boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : provided.boxShadow,
+    }),
+    menu: (provided) => ({
+      ...provided,
+      backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      backgroundColor: state.isSelected
+        ? '#3b82f6'
+        : state.isFocused
+        ? theme === 'dark' ? '#374151' : '#f3f4f6'
+        : 'transparent',
+      color: state.isSelected
+        ? '#fff'
+        : theme === 'dark' ? '#fff' : '#1f2937',
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: theme === 'dark' ? '#fff' : '#1f2937',
+    }),
+    input: (provided) => ({
+      ...provided,
+      color: theme === 'dark' ? '#fff' : '#1f2937',
+    }),
+    placeholder: (provided) => ({
+      ...provided,
+      color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+    }),
+  };
 
   useEffect(() => {
     const fetchMasterData = async () => {
       setLoading(true);
       setError('');
       try {
-        const [itemRes, lokasiRes, unitKerjaRes] = await Promise.all([
-          api.get('/master-data/master-item'),
-          api.get('/master-data/lokasi'),
-          api.get('/master-data/unit-kerja'),
+        // Menggunakan endpoint yang benar
+        const [itemRes, kampusRes] = await Promise.all([
+          api.get<MasterItem[]>('/master-data/master-item'),
+          api.get<Kampus[]>('/master-data/kampus'), // Menggunakan endpoint /master-data/kampus
         ]);
         
         // Filter hanya item dengan metode pelacakan Individual
@@ -102,8 +164,20 @@ export function AssetCreatePage() {
         );
         
         setItems(individualItems);
-        setLokasi(lokasiRes.data);
-        setUnitKerja(unitKerjaRes.data);
+        setKampus(kampusRes.data);
+        
+        // Format options untuk react-select
+        setItemOptions(individualItems.map(item => ({
+          value: item.id_item.toString(),
+          label: `${item.kode_item} - ${item.nama_item}`,
+          data: item
+        })));
+        
+        setKampusOptions(kampusRes.data.map((k: Kampus) => ({
+          value: k.id_kampus.toString(),
+          label: `${k.kode_kampus} - ${k.nama_kampus}`,
+          data: k
+        })));
         
         if (individualItems.length === 0) {
           setError('Tidak ada item dengan metode pelacakan Individual. Silakan buat master item terlebih dahulu.');
@@ -119,162 +193,139 @@ export function AssetCreatePage() {
     fetchMasterData();
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Validasi tipe file
-      if (!file.type.match('image.*')) {
-        alert('Hanya file gambar yang diperbolehkan');
-        return;
+  // Fetch gedung berdasarkan kampus yang dipilih
+  useEffect(() => {
+    if (!formData.id_kampus) {
+      setGedung([]);
+      setGedungOptions([]);
+      return;
+    }
+    
+    const fetchGedung = async () => {
+      try {
+        // Menggunakan endpoint yang benar
+        const response = await api.get<Gedung[]>(`/master-data/gedung/by-kampus/${formData.id_kampus}`);
+        setGedung(response.data);
+        setGedungOptions(response.data.map(g => ({
+          value: g.id_gedung.toString(),
+          label: `${g.kode_gedung} - ${g.nama_gedung}`,
+          data: g
+        })));
+      } catch (err) {
+        console.error("Gagal memuat data gedung:", err);
+        setGedung([]);
+        setGedungOptions([]);
       }
-      
-      // Validasi ukuran file (maksimal 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB');
-        return;
+    };
+    
+    fetchGedung();
+  }, [formData.id_kampus]);
+
+  // Fetch lokasi berdasarkan gedung yang dipilih
+  useEffect(() => {
+    if (!formData.id_gedung) {
+      setLokasi([]);
+      setLokasiOptions([]);
+      return;
+    }
+    
+    const fetchLokasi = async () => {
+      try {
+        // Menggunakan endpoint yang benar
+        const response = await api.get<Lokasi[]>(`/master-data/lokasi/by-gedung/${formData.id_gedung}`);
+        setLokasi(response.data);
+        setLokasiOptions(response.data.map(l => ({
+          value: l.id_lokasi.toString(),
+          label: `Lantai ${l.lantai} - ${l.kode_ruangan} - ${l.nama_ruangan}`,
+          data: l
+        })));
+      } catch (err) {
+        console.error("Gagal memuat data lokasi:", err);
+        setLokasi([]);
+        setLokasiOptions([]);
       }
-      
-      setSelectedFile(file);
-      
-      // Buat preview gambar
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    setPreviewImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const uploadFile = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
+    };
     
-    try {
-      const response = await api.post('/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / (progressEvent.total || 1)
-          );
-          setUploadProgress(progress);
-        },
-      });
-      
-      return response.data.url; // Asumsikan server mengembalikan URL file
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      throw new Error('Gagal mengupload file');
-    }
-  };
+    fetchLokasi();
+  }, [formData.id_gedung]);
 
-  const handleItemChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setItemInput(value);
-    
-    // Cari item yang cocok dengan input (case-insensitive and trimmed)
-    const foundItem = items.find(item => 
-      `${item.kode_item} - ${item.nama_item}`.trim().toLowerCase() === value.trim().toLowerCase()
-    );
-    
-    if (foundItem) {
-      setFormData(prev => ({ ...prev, id_item: foundItem.id_item.toString() }));
-    } else {
-      // Jika tidak ada yang cocok, cek apakah input hanya berupa kode item
-      const foundByCode = items.find(item => 
-        item.kode_item.toLowerCase() === value.trim().toLowerCase()
-      );
-      
-      if (foundByCode) {
-        setFormData(prev => ({ ...prev, id_item: foundByCode.id_item.toString() }));
-        setItemInput(`${foundByCode.kode_item} - ${foundByCode.nama_item}`);
-      } else {
-        setFormData(prev => ({ ...prev, id_item: '' }));
+  // Fetch unit kerja
+  useEffect(() => {
+    const fetchUnitKerja = async () => {
+      try {
+        const response = await api.get<UnitKerja[]>('/master-data/unit-kerja');
+        setUnitKerja(response.data);
+        setUnitKerjaOptions(response.data.map(u => ({
+          value: u.id_unit_kerja.toString(),
+          label: `${u.kode_unit} - ${u.nama_unit}`,
+          data: u
+        })));
+      } catch (err) {
+        console.error("Gagal memuat data unit kerja:", err);
+        setUnitKerja([]);
+        setUnitKerjaOptions([]);
       }
-    }
+    };
     
-    // Clear field error when user starts typing
+    fetchUnitKerja();
+  }, []);
+
+  const handleItemChange = (selected: SelectOption | null) => {
+    setFormData(prev => ({ ...prev, id_item: selected?.value || '' }));
+    
+    // Clear field error when user selects an item
     if (fieldErrors.id_item) {
       setFieldErrors(prev => ({ ...prev, id_item: '' }));
     }
   };
 
-  const handleLokasiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setLokasiInput(value);
+  const handleKampusChange = (selected: SelectOption | null) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      id_kampus: selected?.value || '',
+      id_gedung: '',
+      id_lokasi: ''
+    }));
     
-    // Cari lokasi yang cocok dengan input (case-insensitive and trimmed)
-    const foundLokasi = lokasi.find(l => 
-      `${l.kode_ruangan} - ${l.nama_ruangan}`.trim().toLowerCase() === value.trim().toLowerCase()
-    );
-    
-    if (foundLokasi) {
-      setFormData(prev => ({ ...prev, id_lokasi: foundLokasi.id_lokasi.toString() }));
-    } else {
-      // Jika tidak ada yang cocok, cek apakah input hanya berupa kode lokasi
-      const foundByCode = lokasi.find(l => 
-        l.kode_ruangan.toLowerCase() === value.trim().toLowerCase()
-      );
-      
-      if (foundByCode) {
-        setFormData(prev => ({ ...prev, id_lokasi: foundByCode.id_lokasi.toString() }));
-        setLokasiInput(`${foundByCode.kode_ruangan} - ${foundByCode.nama_ruangan}`);
-      } else {
-        setFormData(prev => ({ ...prev, id_lokasi: '' }));
-      }
+    // Clear field error when user selects a kampus
+    if (fieldErrors.id_kampus) {
+      setFieldErrors(prev => ({ ...prev, id_kampus: '' }));
     }
+  };
+
+  const handleGedungChange = (selected: SelectOption | null) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      id_gedung: selected?.value || '',
+      id_lokasi: ''
+    }));
     
-    // Clear field error when user starts typing
+    // Clear field error when user selects a gedung
+    if (fieldErrors.id_gedung) {
+      setFieldErrors(prev => ({ ...prev, id_gedung: '' }));
+    }
+  };
+
+  const handleLokasiChange = (selected: SelectOption | null) => {
+    setFormData(prev => ({ ...prev, id_lokasi: selected?.value || '' }));
+    
+    // Clear field error when user selects a location
     if (fieldErrors.id_lokasi) {
       setFieldErrors(prev => ({ ...prev, id_lokasi: '' }));
     }
   };
 
-  const handleUnitKerjaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setUnitKerjaInput(value);
+  const handleUnitKerjaChange = (selected: SelectOption | null) => {
+    setFormData(prev => ({ ...prev, id_unit_kerja: selected?.value || '' }));
     
-    // Cari unit kerja yang cocok dengan input (case-insensitive and trimmed)
-    const foundUnitKerja = unitKerja.find(u => 
-      `${u.kode_unit} - ${u.nama_unit}`.trim().toLowerCase() === value.trim().toLowerCase()
-    );
-    
-    if (foundUnitKerja) {
-      setFormData(prev => ({ ...prev, id_unit_kerja: foundUnitKerja.id_unit_kerja.toString() }));
-    } else {
-      // Jika tidak ada yang cocok, cek apakah input hanya berupa kode unit
-      const foundByCode = unitKerja.find(u => 
-        u.kode_unit.toLowerCase() === value.trim().toLowerCase()
-      );
-      
-      if (foundByCode) {
-        setFormData(prev => ({ ...prev, id_unit_kerja: foundByCode.id_unit_kerja.toString() }));
-        setUnitKerjaInput(`${foundByCode.kode_unit} - ${foundByCode.nama_unit}`);
-      } else {
-        setFormData(prev => ({ ...prev, id_unit_kerja: '' }));
-      }
-    }
-    
-    // Clear field error when user starts typing
+    // Clear field error when user selects a unit
     if (fieldErrors.id_unit_kerja) {
       setFieldErrors(prev => ({ ...prev, id_unit_kerja: '' }));
     }
   };
 
-  const handleGroupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setGroupInput(value);
-    setFormData(prev => ({ ...prev, id_group: value }));
+  const handleGroupChange = (selected: SelectOption | null) => {
+    setFormData(prev => ({ ...prev, id_group: selected?.value || '' }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -295,6 +346,8 @@ export function AssetCreatePage() {
     const validationErrors: Record<string, string> = {};
     
     if (!formData.id_item) validationErrors.id_item = 'Jenis item wajib dipilih';
+    if (!formData.id_kampus) validationErrors.id_kampus = 'Kampus wajib dipilih';
+    if (!formData.id_gedung) validationErrors.id_gedung = 'Gedung wajib dipilih';
     if (!formData.id_lokasi) validationErrors.id_lokasi = 'Lokasi penempatan wajib dipilih';
     if (!formData.id_unit_kerja) validationErrors.id_unit_kerja = 'Unit penanggung jawab wajib dipilih';
     if (!formData.tgl_perolehan) validationErrors.tgl_perolehan = 'Tanggal perolehan wajib diisi';
@@ -307,12 +360,16 @@ export function AssetCreatePage() {
 
     // Generate preview data
     const selectedItem = items.find(item => item.id_item === Number(formData.id_item));
+    const selectedKampus = kampus.find(k => k.id_kampus === Number(formData.id_kampus));
+    const selectedGedung = gedung.find(g => g.id_gedung === Number(formData.id_gedung));
     const selectedLokasi = lokasi.find(l => l.id_lokasi === Number(formData.id_lokasi));
     const selectedUnitKerja = unitKerja.find(u => u.id_unit_kerja === Number(formData.id_unit_kerja));
 
-    if (selectedItem && selectedLokasi && selectedUnitKerja) {
+    if (selectedItem && selectedKampus && selectedGedung && selectedLokasi && selectedUnitKerja) {
       const preview = {
         item: selectedItem,
+        kampus: selectedKampus,
+        gedung: selectedGedung,
         lokasi: selectedLokasi,
         unitKerja: selectedUnitKerja,
         formData,
@@ -321,7 +378,7 @@ export function AssetCreatePage() {
       setPreviewData(preview);
       
       // Generate kode aset untuk preview QR Code
-      const kodeAset = `${selectedLokasi.gedung?.kode_gedung}${selectedLokasi.lantai}${selectedLokasi.kode_ruangan}/${selectedUnitKerja.unitUtama?.kode_unit_utama}.${selectedUnitKerja.kode_unit}/${selectedItem.kode_item}.1/${new Date(formData.tgl_perolehan).getFullYear()}`;
+      const kodeAset = `${selectedKampus.kode_kampus}${selectedGedung.kode_gedung}${selectedLokasi.lantai}${selectedLokasi.kode_ruangan}/${selectedUnitKerja.unitUtama?.kode_unit_utama}.${selectedUnitKerja.kode_unit}/${selectedItem.kode_item}.1/${new Date(formData.tgl_perolehan).getFullYear()}`;
       setQrCodePreview(kodeAset);
     }
   };
@@ -336,6 +393,8 @@ export function AssetCreatePage() {
     const validationErrors: Record<string, string> = {};
     
     if (!formData.id_item) validationErrors.id_item = 'Jenis item wajib dipilih';
+    if (!formData.id_kampus) validationErrors.id_kampus = 'Kampus wajib dipilih';
+    if (!formData.id_gedung) validationErrors.id_gedung = 'Gedung wajib dipilih';
     if (!formData.id_lokasi) validationErrors.id_lokasi = 'Lokasi penempatan wajib dipilih';
     if (!formData.id_unit_kerja) validationErrors.id_unit_kerja = 'Unit penanggung jawab wajib dipilih';
     if (!formData.tgl_perolehan) validationErrors.tgl_perolehan = 'Tanggal perolehan wajib diisi';
@@ -348,40 +407,26 @@ export function AssetCreatePage() {
     }
 
     try {
-      let fotoUrl = '';
-      
-      // Upload file jika ada
-      if (selectedFile) {
-        setIsUploading(true);
-        try {
-          fotoUrl = await uploadFile(selectedFile);
-        } catch (uploadError) {
-          setError('Gagal mengupload foto. Silakan coba lagi.');
-          setIsSubmitting(false);
-          setIsUploading(false);
-          return;
-        }
-        setIsUploading(false);
-      }
-
       console.log('Data yang dikirim:', {
         ...formData,
         id_item: Number(formData.id_item),
+        id_kampus: Number(formData.id_kampus),
+        id_gedung: Number(formData.id_gedung),
         id_lokasi: Number(formData.id_lokasi),
         id_unit_kerja: Number(formData.id_unit_kerja),
         id_group: formData.id_group ? Number(formData.id_group) : null,
         jumlah: Number(formData.jumlah),
-        foto_barang: fotoUrl,
       });
 
       const response = await api.post('/assets', {
         ...formData,
         id_item: Number(formData.id_item),
+        id_kampus: Number(formData.id_kampus),
+        id_gedung: Number(formData.id_gedung),
         id_lokasi: Number(formData.id_lokasi),
         id_unit_kerja: Number(formData.id_unit_kerja),
         id_group: formData.id_group ? Number(formData.id_group) : null,
         jumlah: Number(formData.jumlah),
-        foto_barang: fotoUrl,
       });
 
       console.log('Response dari server:', response.data);
@@ -447,6 +492,8 @@ export function AssetCreatePage() {
     // Reset form
     setFormData({
       id_item: '',
+      id_kampus: '',
+      id_gedung: '',
       id_lokasi: '',
       id_unit_kerja: '',
       id_group: '',
@@ -459,12 +506,6 @@ export function AssetCreatePage() {
       status_aset: 'Tersedia',
       kondisi_terakhir: 'Baik',
     });
-    setItemInput('');
-    setLokasiInput('');
-    setUnitKerjaInput('');
-    setGroupInput('');
-    setSelectedFile(null);
-    setPreviewImage(null);
     setPreviewData(null);
     setQrCodePreview('');
     setShowSuccessModal(false);
@@ -501,7 +542,7 @@ export function AssetCreatePage() {
               <p className={`${
                 theme === "dark" ? "text-gray-400" : "text-gray-600"
               }`}>
-                Daftarkan aset baru ke dalam sistem inventaris. QR Code akan dibuat secara otomatis.
+                Daftarkan aset baru ke dalam sistem inventaris
               </p>
             </div>
             <button
@@ -558,27 +599,16 @@ export function AssetCreatePage() {
                 }`}>
                   Jenis Item <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="text" 
-                  value={itemInput} 
+                <Select
+                  options={itemOptions}
+                  value={itemOptions.find(opt => opt.value === formData.id_item)}
                   onChange={handleItemChange}
-                  list="itemOptions"
-                  placeholder="Ketik kode atau nama item"
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                    fieldErrors.id_item 
-                      ? theme === "dark"
-                        ? "border-red-500 bg-red-900/20 text-red-200"
-                        : "border-red-300 bg-red-50 text-red-900"
-                      : theme === "dark"
-                        ? "border-gray-600 bg-gray-700 text-white"
-                        : "border-gray-300 bg-white text-gray-900"
-                  }`}
+                  placeholder="Pilih jenis item"
+                  isClearable
+                  isSearchable
+                  styles={selectStyles}
+                  className={fieldErrors.id_item ? 'react-select-error' : ''}
                 />
-                <datalist id="itemOptions">
-                  {items.map(item => (
-                    <option key={item.id_item} value={`${item.kode_item} - ${item.nama_item}`} />
-                  ))}
-                </datalist>
                 {fieldErrors.id_item && (
                   <p className={`mt-1 text-sm ${
                     theme === "dark" ? "text-red-400" : "text-red-600"
@@ -593,40 +623,76 @@ export function AssetCreatePage() {
                     Tidak ada item yang tersedia. Pastikan ada master item dengan metode pelacakan Individual.
                   </p>
                 )}
-                <p className={`mt-1 text-sm ${
-                  theme === "dark" ? "text-gray-400" : "text-gray-500"
-                }`}>
-                  Pilih dari daftar atau ketik manual
-                </p>
               </div>
               
               <div>
                 <label className={`block text-sm font-medium mb-2 ${
                   theme === "dark" ? "text-gray-300" : "text-gray-700"
                 }`}>
-                  Lokasi Penempatan <span className="text-red-500">*</span>
+                  Lokasi <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="text" 
-                  value={lokasiInput} 
-                  onChange={handleLokasiChange}
-                  list="lokasiOptions"
-                  placeholder="Ketik kode atau nama lokasi"
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                    fieldErrors.id_lokasi 
-                      ? theme === "dark"
-                        ? "border-red-500 bg-red-900/20 text-red-200"
-                        : "border-red-300 bg-red-50 text-red-900"
-                      : theme === "dark"
-                        ? "border-gray-600 bg-gray-700 text-white"
-                        : "border-gray-300 bg-white text-gray-900"
-                  }`}
+                <Select
+                  options={kampusOptions}
+                  value={kampusOptions.find(opt => opt.value === formData.id_kampus)}
+                  onChange={handleKampusChange}
+                  placeholder="Pilih Lokasi"
+                  isClearable
+                  isSearchable
+                  styles={selectStyles}
+                  className={fieldErrors.id_kampus ? 'react-select-error' : ''}
                 />
-                <datalist id="lokasiOptions">
-                  {lokasi.map(l => (
-                    <option key={l.id_lokasi} value={`${l.kode_ruangan} - ${l.nama_ruangan}`} />
-                  ))}
-                </datalist>
+                {fieldErrors.id_kampus && (
+                  <p className={`mt-1 text-sm ${
+                    theme === "dark" ? "text-red-400" : "text-red-600"
+                  }`}>
+                    {fieldErrors.id_kampus}
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}>
+                  Gedung <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  options={gedungOptions}
+                  value={gedungOptions.find(opt => opt.value === formData.id_gedung)}
+                  onChange={handleGedungChange}
+                  placeholder="Pilih gedung"
+                  isClearable
+                  isSearchable
+                  isDisabled={!formData.id_kampus}
+                  styles={selectStyles}
+                  className={fieldErrors.id_gedung ? 'react-select-error' : ''}
+                />
+                {fieldErrors.id_gedung && (
+                  <p className={`mt-1 text-sm ${
+                    theme === "dark" ? "text-red-400" : "text-red-600"
+                  }`}>
+                    {fieldErrors.id_gedung}
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}>
+                  Lantai/Ruangan <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  options={lokasiOptions}
+                  value={lokasiOptions.find(opt => opt.value === formData.id_lokasi)}
+                  onChange={handleLokasiChange}
+                  placeholder="Pilih ruangan"
+                  isClearable
+                  isSearchable
+                  isDisabled={!formData.id_gedung}
+                  styles={selectStyles}
+                  className={fieldErrors.id_lokasi ? 'react-select-error' : ''}
+                />
                 {fieldErrors.id_lokasi && (
                   <p className={`mt-1 text-sm ${
                     theme === "dark" ? "text-red-400" : "text-red-600"
@@ -634,40 +700,26 @@ export function AssetCreatePage() {
                     {fieldErrors.id_lokasi}
                   </p>
                 )}
-                <p className={`mt-1 text-sm ${
-                  theme === "dark" ? "text-gray-400" : "text-gray-500"
-                }`}>
-                  Pilih dari daftar atau ketik manual
-                </p>
               </div>
-              
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${
                   theme === "dark" ? "text-gray-300" : "text-gray-700"
                 }`}>
-                  Unit Penanggung Jawab <span className="text-red-500">*</span>
+                  Unit Kerja <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  type="text" 
-                  value={unitKerjaInput} 
+                <Select
+                  options={unitKerjaOptions}
+                  value={unitKerjaOptions.find(opt => opt.value === formData.id_unit_kerja)}
                   onChange={handleUnitKerjaChange}
-                  list="unitKerjaOptions"
-                  placeholder="Ketik kode atau nama unit"
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                    fieldErrors.id_unit_kerja 
-                      ? theme === "dark"
-                        ? "border-red-500 bg-red-900/20 text-red-200"
-                        : "border-red-300 bg-red-50 text-red-900"
-                      : theme === "dark"
-                        ? "border-gray-600 bg-gray-700 text-white"
-                        : "border-gray-300 bg-white text-gray-900"
-                  }`}
+                  placeholder="Pilih unit kerja"
+                  isClearable
+                  isSearchable
+                  styles={selectStyles}
+                  className={fieldErrors.id_unit_kerja ? 'react-select-error' : ''}
                 />
-                <datalist id="unitKerjaOptions">
-                  {unitKerja.map(u => (
-                    <option key={u.id_unit_kerja} value={`${u.kode_unit} - ${u.nama_unit}`} />
-                  ))}
-                </datalist>
                 {fieldErrors.id_unit_kerja && (
                   <p className={`mt-1 text-sm ${
                     theme === "dark" ? "text-red-400" : "text-red-600"
@@ -675,11 +727,6 @@ export function AssetCreatePage() {
                     {fieldErrors.id_unit_kerja}
                   </p>
                 )}
-                <p className={`mt-1 text-sm ${
-                  theme === "dark" ? "text-gray-400" : "text-gray-500"
-                }`}>
-                  Pilih dari daftar atau ketik manual
-                </p>
               </div>
 
               <div>
@@ -688,30 +735,15 @@ export function AssetCreatePage() {
                 }`}>
                   Group (Opsional)
                 </label>
-                <input 
-                  type="text" 
-                  value={groupInput} 
+                <Select
+                  options={groupOptions}
+                  value={groupOptions.find(opt => opt.value === formData.id_group)}
                   onChange={handleGroupChange}
-                  list="groupOptions"
-                  placeholder="Ketik nama group"
-                  className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                    theme === "dark"
-                      ? "border-gray-600 bg-gray-700 text-white"
-                      : "border-gray-300 bg-white text-gray-900"
-                  }`}
+                  placeholder="Pilih group"
+                  isClearable
+                  isSearchable
+                  styles={selectStyles}
                 />
-                <datalist id="groupOptions">
-                  <option value="Group A" />
-                  <option value="Group B" />
-                  <option value="Group C" />
-                  <option value="Group D" />
-                  <option value="Group E" />
-                </datalist>
-                <p className={`mt-1 text-sm ${
-                  theme === "dark" ? "text-gray-400" : "text-gray-500"
-                }`}>
-                  Pilih dari daftar atau ketik manual
-                </p>
               </div>
             </div>
 
@@ -954,111 +986,6 @@ export function AssetCreatePage() {
               </div>
             </div>
 
-            {/* --- Upload Foto Barang --- */}
-            <div className="space-y-6">
-              <h3 className={`text-lg font-semibold border-b pb-2 ${
-                theme === "dark" 
-                  ? "text-gray-200 border-gray-700" 
-                  : "text-gray-800 border-gray-200"
-              }`}>
-                Upload Foto Barang
-              </h3>
-              
-              <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md ${
-                theme === "dark" 
-                  ? "border-gray-600 bg-gray-700/50" 
-                  : "border-gray-300 bg-gray-50"
-              }`}>
-                <div className="space-y-1 text-center">
-                  {previewImage ? (
-                    <div className="flex flex-col items-center">
-                      <img 
-                        src={previewImage} 
-                        alt="Preview" 
-                        className="max-h-64 rounded-lg shadow-md mb-3"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleRemoveFile}
-                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                          theme === "dark"
-                            ? "bg-red-700 text-white hover:bg-red-600"
-                            : "bg-red-100 text-red-700 hover:bg-red-200"
-                        }`}
-                      >
-                        Hapus Foto
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <svg
-                        className={`mx-auto h-12 w-12 ${
-                          theme === "dark" ? "text-gray-400" : "text-gray-500"
-                        }`}
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 48 48"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <div className="flex text-sm text-gray-600">
-                        <label
-                          htmlFor="file-upload"
-                          className={`relative cursor-pointer rounded-md font-medium ${
-                            theme === "dark"
-                              ? "text-blue-400 hover:text-blue-300"
-                              : "text-blue-600 hover:text-blue-500"
-                          }`}
-                        >
-                          <span>Upload file</span>
-                          <input
-                            id="file-upload"
-                            name="file-upload"
-                            type="file"
-                            className="sr-only"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            ref={fileInputRef}
-                            disabled={isSubmitting || isUploading}
-                          />
-                        </label>
-                        <p className="pl-1">atau drag and drop</p>
-                      </div>
-                      <p className={`text-xs ${
-                        theme === "dark" ? "text-gray-400" : "text-gray-500"
-                      }`}>
-                        PNG, JPG, GIF hingga 5MB
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-              
-              {isUploading && (
-                <div className="mt-2">
-                  <div className={`w-full bg-gray-200 rounded-full h-2.5 ${
-                    theme === "dark" ? "bg-gray-700" : ""
-                  }`}>
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
-                  </div>
-                  <p className={`text-xs mt-1 ${
-                    theme === "dark" ? "text-gray-400" : "text-gray-500"
-                  }`}>
-                    Mengupload: {uploadProgress}%
-                  </p>
-                </div>
-              )}
-            </div>
-
             {/* --- Preview Kode Aset --- */}
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -1096,7 +1023,7 @@ export function AssetCreatePage() {
                       <div className={`font-mono text-sm p-2 rounded ${
                         theme === "dark" ? "bg-gray-800" : "bg-gray-100"
                       }`}>
-                        {previewData.lokasi.gedung?.kode_gedung}{previewData.lokasi.lantai}{previewData.lokasi.kode_ruangan}/
+                        {previewData.kampus.kode_kampus}{previewData.gedung.kode_gedung}{previewData.lokasi.lantai}{previewData.lokasi.kode_ruangan}/
                         {previewData.unitKerja.unitUtama?.kode_unit_utama}.{previewData.unitKerja.kode_unit}/
                         {previewData.item.kode_item}.{previewData.jumlah > 1 ? '[1-' + previewData.jumlah + ']' : '1'}/
                         {new Date(previewData.formData.tgl_perolehan).getFullYear()}
@@ -1138,7 +1065,7 @@ export function AssetCreatePage() {
               <button
                 type="button"
                 onClick={() => navigate('/assets')}
-                disabled={isSubmitting || isUploading}
+                disabled={isSubmitting}
                 className={`px-6 py-2 rounded-lg transition-colors ${
                   theme === "dark"
                     ? "border-gray-600 text-gray-300 hover:bg-gray-700"
@@ -1149,19 +1076,19 @@ export function AssetCreatePage() {
               </button>
               <button 
                 type="submit" 
-                disabled={isSubmitting || isUploading || items.length === 0}
+                disabled={isSubmitting || items.length === 0}
                 className={`px-6 py-2 rounded-lg shadow transition-colors flex items-center ${
-                  isSubmitting || isUploading || items.length === 0
+                  isSubmitting || items.length === 0
                     ? "bg-blue-400 cursor-not-allowed"
                     : theme === "dark"
                       ? "bg-blue-600 hover:bg-blue-700"
                       : "bg-blue-600 hover:bg-blue-700"
                 } text-white`}
               >
-                {isSubmitting || isUploading ? (
+                {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    {isUploading ? 'Mengupload...' : 'Menyimpan...'}
+                    Menyimpan...
                   </>
                 ) : (
                   `Simpan Aset ${formData.jumlah > 1 ? `(${formData.jumlah})` : ''}`

@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { UnitUtama } from '../entities/unit-utama.entity';
 import { UnitKerja } from '../entities/unit-kerja.entity';
 import { Gedung } from '../entities/gedung.entity';
+import { Kampus } from 'src/entities/kampus.entity';
 import { Lokasi } from '../entities/lokasi.entity';
 import { KategoriItem } from '../entities/kategori-item.entity';
 import { MasterItem } from '../entities/master-item.entity';
@@ -12,6 +13,8 @@ import { CreateUnitUtamaDto } from './dto/create-unit-utama.dto';
 import { UpdateUnitUtamaDto } from './dto/update-unit-utama.dto';
 import { CreateUnitKerjaDto } from './dto/create-unit-kerja.dto';
 import { UpdateUnitKerjaDto } from './dto/update-unit-kerja.dto';
+import { CreateKampusDto } from './dto/create-kampus.dto';
+import { UpdateKampusDto } from './dto/update-kampus.dto';
 import { CreateGedungDto } from './dto/create-gedung.dto';
 import { UpdateGedungDto } from './dto/update-gedung.dto';
 import { CreateLokasiDto } from './dto/create-lokasi.dto';
@@ -27,6 +30,7 @@ export class MasterDataService {
     @InjectRepository(UnitUtama) private unitUtamaRepository: Repository<UnitUtama>,
     @InjectRepository(UnitKerja) private unitKerjaRepository: Repository<UnitKerja>,
     @InjectRepository(Gedung) private gedungRepository: Repository<Gedung>,
+    @InjectRepository(Kampus) private kampusRepository: Repository<Kampus>,
     @InjectRepository(Lokasi) private lokasiRepository: Repository<Lokasi>,
     @InjectRepository(KategoriItem) private kategoriItemRepository: Repository<KategoriItem>,
     @InjectRepository(MasterItem) private masterItemRepository: Repository<MasterItem>,
@@ -181,9 +185,20 @@ export class MasterDataService {
   // --- Metode untuk Gedung ---
   async findAllGedung() {
     return this.gedungRepository.find({
+      relations: ['kampus'], // Tambahkan relasi kampus
       order: { nama_gedung: 'ASC' }
     });
   }
+
+  // 👇 PERBAIKAN METODE INI 👇
+  async findGedungByKampus(id_kampus: number): Promise<Gedung[]> {
+    return this.gedungRepository.find({
+      where: { id_kampus },
+      relations: ['kampus'],
+      order: { nama_gedung: 'ASC' }
+    });
+  }
+  // 👆 BATAS PERBAIKAN 👇
 
   async createGedung(data: CreateGedungDto) {
     // Cek apakah kode sudah ada
@@ -193,6 +208,15 @@ export class MasterDataService {
     
     if (existing) {
       throw new BadRequestException('Kode gedung sudah digunakan');
+    }
+
+    // Cek apakah kampus ada
+    const kampus = await this.kampusRepository.findOneBy({
+      id_kampus: data.id_kampus
+    });
+    
+    if (!kampus) {
+      throw new BadRequestException('Kampus tidak ditemukan');
     }
     
     return this.gedungRepository.save(this.gedungRepository.create(data));
@@ -215,8 +239,22 @@ export class MasterDataService {
       }
     }
 
+    // Cek apakah kampus ada jika diubah
+    if (data.id_kampus && data.id_kampus !== gedung.id_kampus) {
+      const kampus = await this.kampusRepository.findOneBy({
+        id_kampus: data.id_kampus
+      });
+      
+      if (!kampus) {
+        throw new BadRequestException('Kampus tidak ditemukan');
+      }
+    }
+
     await this.gedungRepository.update(id, data);
-    return this.gedungRepository.findOneBy({ id_gedung: id });
+    return this.gedungRepository.findOne({
+      where: { id_gedung: id },
+      relations: ['kampus']
+    });
   }
 
   async removeGedung(id: number) {
@@ -245,6 +283,16 @@ export class MasterDataService {
       order: { nama_ruangan: 'ASC' }
     });
   }
+
+  // 👇 PERBAIKAN METODE INI 👇
+  async findLokasiByGedung(id_gedung: number): Promise<Lokasi[]> {
+    return this.lokasiRepository.find({
+      where: { id_gedung },
+      relations: ['gedung', 'unitKerja'],
+      order: { nama_ruangan: 'ASC' }
+    });
+  }
+  // 👆 BATAS PERBAIKAN 👇
 
   async createLokasi(data: CreateLokasiDto) {
     // Cek apakah kode sudah ada
@@ -471,6 +519,70 @@ export class MasterDataService {
     await this.masterItemRepository.delete(id);
     return { message: 'Master Item berhasil dihapus' };
   }
+
+  // --- 👇 PERBAIKAN METODE CRUD UNTUK KAMPUS 👇 ---
+  async createKampus(createKampusDto: CreateKampusDto): Promise<Kampus> {
+    // Cek apakah kode sudah ada
+    const existing = await this.kampusRepository.findOne({
+      where: { kode_kampus: createKampusDto.kode_kampus }
+    });
+    
+    if (existing) {
+      throw new BadRequestException('Kode kampus sudah digunakan');
+    }
+    
+    const kampusBaru = this.kampusRepository.create(createKampusDto);
+    return this.kampusRepository.save(kampusBaru);
+  }
+
+  async findAllKampus(): Promise<Kampus[]> {
+    return this.kampusRepository.find({ 
+      order: { nama_kampus: 'ASC' } 
+    });
+  }
+
+  async findOneKampus(id: number): Promise<Kampus> {
+    const kampus = await this.kampusRepository.findOneBy({ id_kampus: id });
+    if (!kampus) {
+      throw new NotFoundException(`Kampus dengan ID ${id} tidak ditemukan`);
+    }
+    return kampus;
+  }
+
+  async updateKampus(id: number, updateKampusDto: UpdateKampusDto): Promise<Kampus> {
+    const kampus = await this.findOneKampus(id);
+    
+    // Cek apakah kode sudah ada (kecuali untuk kampus yang sama)
+    if (updateKampusDto.kode_kampus && updateKampusDto.kode_kampus !== kampus.kode_kampus) {
+      const existing = await this.kampusRepository.findOne({
+        where: { kode_kampus: updateKampusDto.kode_kampus }
+      });
+      
+      if (existing) {
+        throw new BadRequestException('Kode kampus sudah digunakan');
+      }
+    }
+    
+    Object.assign(kampus, updateKampusDto);
+    return this.kampusRepository.save(kampus);
+  }
+
+  async removeKampus(id: number): Promise<{ message: string }> {
+    const kampus = await this.findOneKampus(id);
+    
+    // Cek apakah ada gedung yang terkait
+    const gedungCount = await this.gedungRepository.count({
+      where: { id_kampus: id }
+    });
+
+    if (gedungCount > 0) {
+      throw new BadRequestException('Tidak dapat menghapus kampus yang masih memiliki gedung terkait');
+    }
+    
+    await this.kampusRepository.delete(id);
+    return { message: 'Kampus berhasil dihapus' };
+  }
+  // --- 👆 BATAS PERBAIKAN CRUD KAMPUS 👆 ---
 
   // TAMBAHKAN 2 METODE BARU UNTUK FITUR LAPORAN DI BAWAH INI
   

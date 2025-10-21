@@ -1,4 +1,5 @@
-// src/assets/assets.service.ts
+
+// file: backend/src/assets/assets.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,6 +8,7 @@ import { MasterItem } from '../entities/master-item.entity';
 import { Lokasi } from '../entities/lokasi.entity';
 import { UnitKerja } from '../entities/unit-kerja.entity';
 import { Gedung } from '../entities/gedung.entity';
+import { Kampus } from '../entities/kampus.entity';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import * as qr from 'qrcode';
 import * as fs from 'fs/promises';
@@ -22,6 +24,7 @@ export class AssetsService {
     @InjectRepository(UnitKerja)
     private unitKerjaRepository: Repository<UnitKerja>,
     @InjectRepository(Gedung) private gedungRepository: Repository<Gedung>,
+    @InjectRepository(Kampus) private kampusRepository: Repository<Kampus>,
   ) {}
 
   async create(createAssetDto: CreateAssetDto): Promise<Asset[]> {
@@ -64,12 +67,11 @@ export class AssetsService {
       const qrCodePath = path.join(uploadDir, qrCodeFileName);
       await fs.writeFile(qrCodePath, qrCodeBuffer);
 
-      // Perbaikan cara membuat entity
       const newAsset = this.assetRepository.create({
         kode_aset,
         nomor_urut: currentNomorUrut,
         file_qrcode: `/uploads/qrcodes/${qrCodeFileName}`,
-        foto_barang: foto_barang || undefined, // Ubah null menjadi undefined
+        foto_barang: foto_barang || undefined,
         id_item,
         id_lokasi,
         id_unit_kerja,
@@ -88,10 +90,7 @@ export class AssetsService {
     }
 
     return createdAssets;
-  
-
-  // ... kode lainnya tetap sama
-}
+  }
 
   private async _generateKodeAset(
     id_lokasi: number,
@@ -110,7 +109,7 @@ export class AssetsService {
     });
     const item = await this.masterItemRepository.findOneBy({ id_item });
 
-    if (!lokasi || !unitKerja || !item) {
+    if (!lokasi || !unitKerja || !item || !lokasi.gedung) {
       throw new NotFoundException(
         'Data master (lokasi/unit/item) tidak ditemukan.',
       );
@@ -204,6 +203,28 @@ export class AssetsService {
       },
       relations: ['gedung', 'unitKerja'],
       order: { nama_ruangan: 'ASC' }
+    });
+  }
+
+  // Methods untuk alur filter Kampus -> Gedung -> Lokasi
+  async findAllKampus(): Promise<Kampus[]> {
+    return this.kampusRepository.find({
+      order: { nama_kampus: 'ASC' }
+    });
+  }
+
+  async findGedungByKampus(id_kampus: number): Promise<Gedung[]> {
+    return this.gedungRepository.find({
+      where: { id_kampus },
+      order: { nama_gedung: 'ASC' }
+    });
+  }
+
+  async findLokasiByGedung(id_gedung: number): Promise<Lokasi[]> {
+    return this.lokasiRepository.find({
+      where: { id_gedung },
+      relations: ['gedung', 'unitKerja'],
+      order: { lantai: 'ASC', nama_ruangan: 'ASC' }
     });
   }
 }
