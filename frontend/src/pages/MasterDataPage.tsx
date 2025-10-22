@@ -536,13 +536,70 @@ function CrudTab<T extends { [key: string]: any }>({
 export function MasterDataPage() {
   const { theme } = useTheme();
   const tabs = [
-    { name: "Lokasi", key: "lokasi" },
-    { name: "Gedung", key: "gedung" },
-    { name: "Fakultas", key: "fakultas" },
-    { name: "Prodi/Bagian", key: "prodi" },
-    { name: "Ruangan", key: "ruangan" },
-    { name: "Kategori Item", key: "kategori" },
-    { name: "Master Item", key: "master-item" }
+    { 
+      name: "Lokasi", 
+      key: "lokasi",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+        </svg>
+      )
+    },
+    { 
+      name: "Gedung", 
+      key: "gedung",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+        </svg>
+      )
+    },
+    { 
+      name: "Fakultas", 
+      key: "fakultas",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
+        </svg>
+      )
+    },
+    { 
+      name: "Prodi/Bagian", 
+      key: "prodi",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+        </svg>
+      )
+    },
+    { 
+      name: "Ruangan", 
+      key: "ruangan",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+        </svg>
+      )
+    },
+    { 
+      name: "Kategori Item", 
+      key: "kategori",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M17 10a1 1 0 01-1 1H4a1 1 0 110-2h12a1 1 0 011 1zm-7 5a1 1 0 01-1 1H4a1 1 0 110-2h5a1 1 0 011 1zm3-7a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm-3 3a1 1 0 011-1h6a1 1 0 110 2h-6a1 1 0 01-1-1zm-3 3a1 1 0 011-1h10a1 1 0 110 2H7a1 1 0 01-1-1z" clipRule="evenodd" />
+        </svg>
+      )
+    },
+    { 
+      name: "Master Item", 
+      key: "master-item",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z" clipRule="evenodd" />
+          <path d="M6 10a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" />
+        </svg>
+      )
+    }
   ];
 
   return (
@@ -574,26 +631,26 @@ export function MasterDataPage() {
             theme === "dark" ? "bg-gray-800" : "bg-white"
           } shadow-lg`}>
             <Tab.Group>
-              {/* Tab Headers */}
+              {/* Tab Headers - Clean, accessible styling */}
               <div className={`border-b ${
                 theme === "dark" ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"
               }`}>
-                <Tab.List className="flex overflow-x-auto px-4">
+                <Tab.List className="flex gap-2 overflow-x-auto px-4 py-2">
                   {tabs.map((tab) => (
                     <Tab key={tab.key} as={Fragment}>
                       {({ selected }) => (
                         <button
-                          className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 ${
+                          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                             selected
-                              ? theme === "dark"
-                                ? "text-blue-400 border-blue-400"
-                                : "text-blue-600 border-blue-600"
-                              : theme === "dark"
-                                ? "text-gray-400 border-transparent hover:text-gray-200 hover:border-gray-400"
-                                : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                              ? (theme === "dark" ? "bg-gray-700 text-blue-300 ring-blue-400" : "bg-white text-blue-600 ring-blue-200")
+                              : (theme === "dark" ? "text-gray-300 hover:bg-gray-750 hover:text-white" : "text-gray-600 hover:bg-gray-100")
                           }`}
+                          aria-current={selected ? 'true' : undefined}
                         >
-                          {tab.name}
+                          <span className={`inline-flex items-center justify-center w-5 h-5 ${selected ? 'opacity-100' : 'opacity-80'}`}>
+                            {tab.icon}
+                          </span>
+                          <span className="truncate max-w-[12rem]">{tab.name}</span>
                         </button>
                       )}
                     </Tab>
