@@ -17,10 +17,10 @@ export class Gedung {
   @Column({ nullable: true })
   id_kampus: number;
 
-  @ManyToOne(() => Kampus)
+  @ManyToOne(() => Kampus, kampus => kampus.gedungs) // Perbaikan di sini
   @JoinColumn({ name: 'id_kampus' })
   kampus: Kampus;
 
   @OneToMany(() => Lokasi, lokasi => lokasi.gedung)
-  lokasis: Lokasi[];
+  lokasis: Lokasi[]; // Perbaiki nama properti untuk konsistensi
 }

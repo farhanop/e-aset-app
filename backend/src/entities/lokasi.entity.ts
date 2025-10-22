@@ -29,11 +29,11 @@ export class Lokasi {
   @Column({ nullable: true })
   id_unit_kerja: number;
 
-  @ManyToOne(() => Gedung)
+  @ManyToOne(() => Gedung, gedung => gedung.lokasis) // Perbaikan di sini
   @JoinColumn({ name: 'id_gedung' })
   gedung: Gedung;
 
-  @ManyToOne(() => UnitKerja)
+  @ManyToOne(() => UnitKerja, unitKerja => unitKerja.lokasi) 
   @JoinColumn({ name: 'id_unit_kerja' })
   unitKerja: UnitKerja;
 }

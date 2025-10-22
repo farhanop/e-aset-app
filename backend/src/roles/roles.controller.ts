@@ -1,20 +1,8 @@
-// src/roles/roles.controller.ts
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Put,
-  Delete,
-  UseGuards,
-  Query,
-  ParseIntPipe,
-} from '@nestjs/common';
+// backend/src/roles/roles.controller.ts
+import { Controller, Get, Post, Body, Put, Delete, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { RolesService } from './roles.service';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
-import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
+import { Role } from './entities/role.entity';
+import { Permission } from './entities/permission.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('roles')
@@ -22,51 +10,66 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
-  // Create role baru
-  @Post()
-  create(@Body() createRoleDto: CreateRoleDto) {
-    return this.rolesService.create(createRoleDto);
-  }
-
-  // Ambil semua role dengan pagination
   @Get()
-  findAll(
-    @Query('page', ParseIntPipe) page = 1,
-    @Query('limit', ParseIntPipe) limit = 10,
-  ) {
-    return this.rolesService.findAll(page, limit);
+  findAll(): Promise<Role[]> {
+    return this.rolesService.findAll();
   }
 
-  // Ambil semua permission
-  @Get('permissions')
-  findAllPermissions() {
-    return this.rolesService.findAllPermissions();
+  @Get(':id')
+  async findOne(@Param('id') id: string): Promise<Role> {
+    try {
+      return await this.rolesService.findOne(+id);
+    } catch (error) {
+      throw error;
+    }
   }
 
-  // Ambil permission sebuah role
-  @Get(':id/permissions')
-  findPermissionsByRoleId(@Param('id', ParseIntPipe) id: number) {
-    return this.rolesService.findPermissionsByRoleId(id);
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  create(@Body() role: Partial<Role>): Promise<Role> {
+    return this.rolesService.create(role);
   }
 
-  // Update permission role
-  @Put(':id/permissions')
-  updatePermissionsForRole(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateDto: UpdateRolePermissionsDto,
-  ) {
-    return this.rolesService.updatePermissionsForRole(id, updateDto);
-  }
-
-  // Update data role (nama, deskripsi)
   @Put(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateRoleDto: UpdateRoleDto) {
-    return this.rolesService.update(id, updateRoleDto);
+  async update(@Param('id') id: string, @Body() role: Partial<Role>): Promise<Role> {
+    try {
+      return await this.rolesService.update(+id, role);
+    } catch (error) {
+      throw error;
+    }
   }
 
-  // Delete role
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.rolesService.remove(id);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Param('id') id: string): Promise<void> {
+    try {
+      await this.rolesService.remove(+id);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Post(':roleId/permissions/:permissionId')
+  async addPermissionToRole(
+    @Param('roleId') roleId: string,
+    @Param('permissionId') permissionId: string
+  ): Promise<Role> {
+    try {
+      return await this.rolesService.addPermissionToRole(+roleId, +permissionId);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Delete(':roleId/permissions/:permissionId')
+  async removePermissionFromRole(
+    @Param('roleId') roleId: string,
+    @Param('permissionId') permissionId: string
+  ): Promise<Role> {
+    try {
+      return await this.rolesService.removePermissionFromRole(+roleId, +permissionId);
+    } catch (error) {
+      throw error;
+    }
   }
 }

@@ -1,3 +1,5 @@
+// src/entities/unit-kerja.entity.ts (perlu dibuat jika belum ada)
+
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { UnitUtama } from './unit-utama.entity';
 import { Lokasi } from './lokasi.entity';
@@ -7,7 +9,7 @@ export class UnitKerja {
   @PrimaryGeneratedColumn()
   id_unit_kerja: number;
 
-  @Column({ length: 20 })
+  @Column({ length: 20, unique: true })
   kode_unit: string;
 
   @Column({ length: 100 })
@@ -16,10 +18,10 @@ export class UnitKerja {
   @Column()
   id_unit_utama: number;
 
-  @ManyToOne(() => UnitUtama)
+  @ManyToOne(() => UnitUtama, unitUtama => unitUtama.unitKerjas)
   @JoinColumn({ name: 'id_unit_utama' })
   unitUtama: UnitUtama;
 
   @OneToMany(() => Lokasi, lokasi => lokasi.unitKerja)
-  lokasis: Lokasi[];
+  lokasi: Lokasi[];
 }

@@ -1,6 +1,6 @@
 // frontend/src/components/layout/Header.tsx
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   FaSignOutAlt,
   FaUserCircle,
@@ -25,6 +25,7 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
   const [currentMenu, setCurrentMenu] = useState("Dashboard");
   const userMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const navigate = useNavigate(); // Tambahkan ini untuk navigasi
 
   // Fungsi untuk mendapatkan nama menu berdasarkan path
   const getMenuName = (path: string) => {
@@ -41,6 +42,8 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
         return "Manajemen Aset";
       case "/parameters":
         return "Manajemen Parameter";
+      case "/profile":
+        return "Profil Saya";
       default:
         // Jika path tidak dikenali, cek apakah path dimulai dengan salah satu path di atas
         if (path.startsWith("/users")) return "Manajemen Pengguna";
@@ -48,6 +51,7 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
         if (path.startsWith("/master-data")) return "Data Master";
         if (path.startsWith("/assets")) return "Manajemen Aset";
         if (path.startsWith("/parameters")) return "Manajemen Parameter";
+        if (path.startsWith("/profile")) return "Profil Saya";
         return "Dashboard";
     }
   };
@@ -59,6 +63,12 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
 
   const handleLogout = () => {
     logout(); // hanya memanggil fungsi logout dari AuthContext
+  };
+
+  // Tambahkan fungsi untuk navigasi ke halaman profil
+  const handleProfileClick = () => {
+    navigate("/profile");
+    setShowUserMenu(false); // Tutup menu user setelah navigasi
   };
 
   useEffect(() => {
@@ -178,8 +188,9 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
                 </p>
               </div>
 
-              {/* Menu Profil */}
+              {/* Menu Profil - Tambahkan onClick handler */}
               <button
+                onClick={handleProfileClick} // Ganti dengan fungsi navigasi
                 className={`flex items-center w-full px-4 py-3 text-sm text-left ${
                   theme === "dark"
                     ? "text-gray-300 hover:bg-gray-700"

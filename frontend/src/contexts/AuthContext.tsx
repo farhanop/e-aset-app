@@ -1,3 +1,4 @@
+// frontend/src/contexts/AuthContext.tsx
 import {
   createContext,
   useState,
@@ -13,7 +14,8 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (token: string, userData?: User) => Promise<void>;
-  logout: (message?: string) => void; // 1. Tambahkan parameter opsional 'message'
+  logout: (message?: string) => void;
+  updateProfile: (formData: FormData) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,10 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem("access_token");
       if (token) {
         try {
+          // Set token ke header axios
+          api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
           const response = await api.get("/auth/profile");
           setUser(response.data);
         } catch (error) {
           localStorage.removeItem("access_token");
+          delete api.defaults.headers.common["Authorization"];
           console.error("Sesi tidak valid, token dihapus:", error);
         }
       }
@@ -41,6 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (token: string, userData?: User) => {
     localStorage.setItem("access_token", token);
+    // Set token ke header axios
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    
     setIsLoading(true);
     try {
       if (userData) {
@@ -49,24 +57,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await api.get("/auth/profile");
         setUser(response.data);
       }
+      // Simpan flag untuk navigasi di komponen lain
+      localStorage.setItem("shouldNavigateToDashboard", "true");
     } catch (error) {
       console.error("Gagal mengambil profil setelah login", error);
       localStorage.removeItem("access_token");
+      delete api.defaults.headers.common["Authorization"];
       setUser(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 2. Perbarui fungsi logout untuk menangani pesan
   const logout = (message?: string) => {
     localStorage.removeItem("access_token");
+    delete api.defaults.headers.common["Authorization"];
     setUser(null);
+    
+    // Simpan pesan logout untuk ditampilkan di halaman login
     if (message) {
-      // Anda bisa menggunakan pesan ini untuk menampilkan notifikasi atau alert
-      console.log("Sesi berakhir:", message);
-      // Contoh jika Anda menggunakan state router untuk menampilkan pesan di halaman login:
-      // navigate('/login', { state: { message } });
+      localStorage.setItem("logoutMessage", message);
+    }
+    
+    // Simpan flag untuk navigasi di komponen lain
+    localStorage.setItem("shouldNavigateToLogin", "true");
+  };
+
+  const updateProfile = async (formData: FormData) => {
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
+    try {
+      const response = await api.patch("/auth/profile", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      
+      // Update user state dengan data terbaru
+      setUser(response.data);
+    } catch (error) {
+      console.error("Update profile error:", error);
+      throw error;
     }
   };
 
@@ -76,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     login,
     logout,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

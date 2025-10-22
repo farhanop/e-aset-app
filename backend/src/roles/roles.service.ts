@@ -1,103 +1,84 @@
-// src/roles/roles.service.ts
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+// backend/src/roles/roles.service.ts
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
-import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class RolesService {
   constructor(
     @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
+    private rolesRepository: Repository<Role>,
     @InjectRepository(Permission)
-    private readonly permissionRepository: Repository<Permission>,
+    private permissionsRepository: Repository<Permission>,
   ) {}
 
-  // --- CRUD untuk Peran (Roles) ---
-
-  async create(createRoleDto: CreateRoleDto): Promise<Role> {
-    const newRole = this.roleRepository.create(createRoleDto);
-    return this.roleRepository.save(newRole);
+  findAll(): Promise<Role[]> {
+    return this.rolesRepository.find({ relations: ['permissions'] });
   }
 
-  async findAll(page: number = 1, limit: number = 10): Promise<{ data: Role[], total: number }> {
-    const [data, total] = await this.roleRepository.findAndCount({
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    
-    return { data, total };
-  }
-
-  async update(id: number, updateRoleDto: UpdateRoleDto): Promise<Role> {
-    const role = await this.roleRepository.findOne({
+  async findOne(id: number): Promise<Role> {
+    const role = await this.rolesRepository.findOne({ 
       where: { id_role: id },
+      relations: ['permissions']
     });
     
     if (!role) {
-      throw new NotFoundException(`Peran dengan ID ${id} tidak ditemukan`);
+      throw new NotFoundException(`Role dengan ID ${id} tidak ditemukan`);
     }
+    
+    return role;
+  }
 
-    Object.assign(role, updateRoleDto);
-    return this.roleRepository.save(role);
+  create(role: Partial<Role>): Promise<Role> {
+    const newRole = this.rolesRepository.create(role);
+    return this.rolesRepository.save(newRole);
+  }
+
+  async update(id: number, role: Partial<Role>): Promise<Role> {
+    await this.rolesRepository.update(id, role);
+    return this.findOne(id);
   }
 
   async remove(id: number): Promise<void> {
-    const role = await this.roleRepository.findOne({
-      where: { id_role: id },
+    const result = await this.rolesRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Role dengan ID ${id} tidak ditemukan`);
+    }
+  }
+
+  async addPermissionToRole(roleId: number, permissionId: number): Promise<Role> {
+    const role = await this.findOne(roleId);
+    
+    const permission = await this.permissionsRepository.findOne({
+      where: { id_permission: permissionId }
     });
     
-    if (!role) {
-      throw new NotFoundException(`Peran dengan ID ${id} tidak ditemukan`);
+    if (!permission) {
+      throw new NotFoundException(`Permission dengan ID ${permissionId} tidak ditemukan`);
     }
 
-    await this.roleRepository.remove(role);
-  }
-
-  // --- Logika untuk Izin (Permissions) ---
-
-  async findAllPermissions(): Promise<Permission[]> {
-    return this.permissionRepository.find();
-  }
-
-  async findPermissionsByRoleId(id: number): Promise<Permission[]> {
-    const role = await this.roleRepository.findOne({
-      where: { id_role: id },
-      relations: ['permissions'], // Mengambil relasi izin
-    });
-    if (!role) {
-      throw new NotFoundException(`Peran dengan ID ${id} tidak ditemukan`);
+    // Cek apakah role sudah memiliki permission ini
+    if (role.permissions.some(p => p.id_permission === permissionId)) {
+      throw new BadRequestException(`Role sudah memiliki permission ini`);
     }
-    return role.permissions;
+
+    role.permissions.push(permission);
+    return this.rolesRepository.save(role);
   }
 
-  async updatePermissionsForRole(
-    id: number,
-    updateDto: UpdateRolePermissionsDto,
-  ): Promise<Role> {
-    const role = await this.roleRepository.findOne({
-      where: { id_role: id },
-      relations: ['permissions'],
-    });
+  async removePermissionFromRole(roleId: number, permissionId: number): Promise<Role> {
+    const role = await this.findOne(roleId);
     
-    if (!role) {
-      throw new NotFoundException(`Peran dengan ID ${id} tidak ditemukan`);
+    // Cek apakah role memiliki permission ini
+    const permissionIndex = role.permissions.findIndex(p => p.id_permission === permissionId);
+    if (permissionIndex === -1) {
+      throw new BadRequestException(`Role tidak memiliki permission ini`);
     }
 
-    // Validasi permission IDs
-    const permissions = await this.permissionRepository.findBy({
-      id_permission: In(updateDto.permissionIds),
-    });
-
-    if (permissions.length !== updateDto.permissionIds.length) {
-      throw new BadRequestException('Beberapa ID permission tidak valid');
-    }
-
-    role.permissions = permissions;
-    return this.roleRepository.save(role);
+    role.permissions.splice(permissionIndex, 1);
+    return this.rolesRepository.save(role);
   }
 }

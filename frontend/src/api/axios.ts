@@ -1,35 +1,43 @@
-// src/api/axios.ts
-import axios, { AxiosError } from "axios";
+// frontend/src/api/axios.ts
+import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
+  baseURL: 'http://localhost:3000',
 });
 
-// Interceptor untuk menambahkan token ke setiap request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Interceptor untuk menangani response error
-api.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    console.error("API Error:", error.response?.data || error.message);
-
-    if (error.response?.status === 401) {
-      localStorage.removeItem("access_token");
-      window.location.href = "/login";
+// Add a request interceptor
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-
-    if (error.response?.status === 400) {
-      console.error("Validation Error:", error.response.data);
-    }
-
+    return config;
+  },
+  (error) => {
     return Promise.reject(error);
+  }
+);
+
+// Add a response interceptor for better error handling
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      // Server responded with error status
+      console.error('Response error:', error.response.data);
+      throw new Error(error.response.data.message || 'Server error');
+    } else if (error.request) {
+      // No response received
+      console.error('Request error:', error.request);
+      throw new Error('No response from server');
+    } else {
+      // Error in request setup
+      console.error('Error:', error.message);
+      throw new Error(error.message);
+    }
   }
 );
 

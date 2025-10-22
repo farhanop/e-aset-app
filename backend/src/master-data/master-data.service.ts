@@ -36,16 +36,20 @@ export class MasterDataService {
     @InjectRepository(MasterItem) private masterItemRepository: Repository<MasterItem>,
   ) {}
 
-  // === KODE YANG SUDAH ADA TETAP DI BAWAH INI ===
+  // === METODE UNTUK UNIT UTAMA ===
   
-  // --- Metode untuk Unit Utama ---
   async findAllUnitUtama() {
-    return this.unitUtamaRepository.find({
+    console.log("Mengambil semua data unit utama");
+    const unitUtama = await this.unitUtamaRepository.find({
       order: { nama_unit_utama: 'ASC' }
     });
+    console.log(`Ditemukan ${unitUtama.length} unit utama`);
+    return unitUtama;
   }
 
   async createUnitUtama(data: CreateUnitUtamaDto) {
+    console.log("Membuat unit utama baru:", data);
+    
     // Cek apakah kode sudah ada
     const existing = await this.unitUtamaRepository.findOne({
       where: { kode_unit_utama: data.kode_unit_utama }
@@ -55,10 +59,15 @@ export class MasterDataService {
       throw new BadRequestException('Kode unit utama sudah digunakan');
     }
     
-    return this.unitUtamaRepository.save(this.unitUtamaRepository.create(data));
+    const newUnitUtama = this.unitUtamaRepository.create(data);
+    const result = await this.unitUtamaRepository.save(newUnitUtama);
+    console.log("Unit utama berhasil dibuat:", result);
+    return result;
   }
 
   async updateUnitUtama(id: number, data: UpdateUnitUtamaDto) {
+    console.log(`Memperbarui unit utama ID: ${id} dengan data:`, data);
+    
     const unitUtama = await this.unitUtamaRepository.findOneBy({ id_unit_utama: id });
     if (!unitUtama) {
       throw new NotFoundException('Unit Utama tidak ditemukan');
@@ -76,10 +85,14 @@ export class MasterDataService {
     }
 
     await this.unitUtamaRepository.update(id, data);
-    return this.unitUtamaRepository.findOneBy({ id_unit_utama: id });
+    const result = await this.unitUtamaRepository.findOneBy({ id_unit_utama: id });
+    console.log("Unit utama berhasil diperbarui:", result);
+    return result;
   }
 
   async removeUnitUtama(id: number) {
+    console.log(`Menghapus unit utama ID: ${id}`);
+    
     const unitUtama = await this.unitUtamaRepository.findOneBy({ id_unit_utama: id });
     if (!unitUtama) {
       throw new NotFoundException('Unit Utama tidak ditemukan');
@@ -95,18 +108,25 @@ export class MasterDataService {
     }
 
     await this.unitUtamaRepository.delete(id);
+    console.log("Unit utama berhasil dihapus");
     return { message: 'Unit Utama berhasil dihapus' };
   }
 
-  // --- Metode untuk Unit Kerja ---
+  // === METODE UNTUK UNIT KERJA ===
+  
   async findAllUnitKerja() {
-    return this.unitKerjaRepository.find({ 
+    console.log("Mengambil semua data unit kerja");
+    const unitKerja = await this.unitKerjaRepository.find({ 
       relations: ['unitUtama'],
       order: { nama_unit: 'ASC' }
     });
+    console.log(`Ditemukan ${unitKerja.length} unit kerja`);
+    return unitKerja;
   }
 
   async createUnitKerja(data: CreateUnitKerjaDto) {
+    console.log("Membuat unit kerja baru:", data);
+    
     // Cek apakah kode sudah ada
     const existing = await this.unitKerjaRepository.findOne({
       where: { kode_unit: data.kode_unit }
@@ -125,10 +145,15 @@ export class MasterDataService {
       throw new BadRequestException('Unit utama tidak ditemukan');
     }
     
-    return this.unitKerjaRepository.save(this.unitKerjaRepository.create(data));
+    const newUnitKerja = this.unitKerjaRepository.create(data);
+    const result = await this.unitKerjaRepository.save(newUnitKerja);
+    console.log("Unit kerja berhasil dibuat:", result);
+    return result;
   }
 
   async updateUnitKerja(id: number, data: UpdateUnitKerjaDto) {
+    console.log(`Memperbarui unit kerja ID: ${id} dengan data:`, data);
+    
     const unitKerja = await this.unitKerjaRepository.findOneBy({ id_unit_kerja: id });
     if (!unitKerja) {
       throw new NotFoundException('Unit Kerja tidak ditemukan');
@@ -157,13 +182,17 @@ export class MasterDataService {
     }
 
     await this.unitKerjaRepository.update(id, data);
-    return this.unitKerjaRepository.findOne({
+    const result = await this.unitKerjaRepository.findOne({
       where: { id_unit_kerja: id },
       relations: ['unitUtama']
     });
+    console.log("Unit kerja berhasil diperbarui:", result);
+    return result;
   }
 
   async removeUnitKerja(id: number) {
+    console.log(`Menghapus unit kerja ID: ${id}`);
+    
     const unitKerja = await this.unitKerjaRepository.findOneBy({ id_unit_kerja: id });
     if (!unitKerja) {
       throw new NotFoundException('Unit Kerja tidak ditemukan');
@@ -179,28 +208,36 @@ export class MasterDataService {
     }
 
     await this.unitKerjaRepository.delete(id);
+    console.log("Unit kerja berhasil dihapus");
     return { message: 'Unit Kerja berhasil dihapus' };
   }
 
-  // --- Metode untuk Gedung ---
+  // === METODE UNTUK GEDUNG ===
+  
   async findAllGedung() {
-    return this.gedungRepository.find({
-      relations: ['kampus'], // Tambahkan relasi kampus
+    console.log("Mengambil semua data gedung");
+    const gedung = await this.gedungRepository.find({
+      relations: ['kampus'],
       order: { nama_gedung: 'ASC' }
     });
+    console.log(`Ditemukan ${gedung.length} gedung`);
+    return gedung;
   }
 
-  // 👇 PERBAIKAN METODE INI 👇
   async findGedungByKampus(id_kampus: number): Promise<Gedung[]> {
-    return this.gedungRepository.find({
+    console.log(`Mencari gedung untuk kampus ID: ${id_kampus}`);
+    const gedungList = await this.gedungRepository.find({
       where: { id_kampus },
       relations: ['kampus'],
       order: { nama_gedung: 'ASC' }
     });
+    console.log(`Ditemukan ${gedungList.length} gedung`);
+    return gedungList;
   }
-  // 👆 BATAS PERBAIKAN 👇
 
   async createGedung(data: CreateGedungDto) {
+    console.log("Membuat gedung baru:", data);
+    
     // Cek apakah kode sudah ada
     const existing = await this.gedungRepository.findOne({
       where: { kode_gedung: data.kode_gedung }
@@ -219,10 +256,15 @@ export class MasterDataService {
       throw new BadRequestException('Kampus tidak ditemukan');
     }
     
-    return this.gedungRepository.save(this.gedungRepository.create(data));
+    const newGedung = this.gedungRepository.create(data);
+    const result = await this.gedungRepository.save(newGedung);
+    console.log("Gedung berhasil dibuat:", result);
+    return result;
   }
 
   async updateGedung(id: number, data: UpdateGedungDto) {
+    console.log(`Memperbarui gedung ID: ${id} dengan data:`, data);
+    
     const gedung = await this.gedungRepository.findOneBy({ id_gedung: id });
     if (!gedung) {
       throw new NotFoundException('Gedung tidak ditemukan');
@@ -251,13 +293,17 @@ export class MasterDataService {
     }
 
     await this.gedungRepository.update(id, data);
-    return this.gedungRepository.findOne({
+    const result = await this.gedungRepository.findOne({
       where: { id_gedung: id },
       relations: ['kampus']
     });
+    console.log("Gedung berhasil diperbarui:", result);
+    return result;
   }
 
   async removeGedung(id: number) {
+    console.log(`Menghapus gedung ID: ${id}`);
+    
     const gedung = await this.gedungRepository.findOneBy({ id_gedung: id });
     if (!gedung) {
       throw new NotFoundException('Gedung tidak ditemukan');
@@ -273,28 +319,36 @@ export class MasterDataService {
     }
 
     await this.gedungRepository.delete(id);
+    console.log("Gedung berhasil dihapus");
     return { message: 'Gedung berhasil dihapus' };
   }
 
-  // --- Metode untuk Lokasi ---
+  // === METODE UNTUK LOKASI ===
+  
   async findAllLokasi() {
-    return this.lokasiRepository.find({ 
+    console.log("Mengambil semua data lokasi");
+    const lokasi = await this.lokasiRepository.find({ 
       relations: ['gedung', 'unitKerja'],
       order: { nama_ruangan: 'ASC' }
     });
+    console.log(`Ditemukan ${lokasi.length} lokasi`);
+    return lokasi;
   }
 
-  // 👇 PERBAIKAN METODE INI 👇
   async findLokasiByGedung(id_gedung: number): Promise<Lokasi[]> {
-    return this.lokasiRepository.find({
+    console.log(`Mencari lokasi untuk gedung ID: ${id_gedung}`);
+    const lokasiList = await this.lokasiRepository.find({
       where: { id_gedung },
       relations: ['gedung', 'unitKerja'],
       order: { nama_ruangan: 'ASC' }
     });
+    console.log(`Ditemukan ${lokasiList.length} lokasi`);
+    return lokasiList;
   }
-  // 👆 BATAS PERBAIKAN 👇
 
   async createLokasi(data: CreateLokasiDto) {
+    console.log("Membuat lokasi baru:", data);
+    
     // Cek apakah kode sudah ada
     const existing = await this.lokasiRepository.findOne({
       where: { kode_ruangan: data.kode_ruangan }
@@ -324,10 +378,15 @@ export class MasterDataService {
       }
     }
     
-    return this.lokasiRepository.save(this.lokasiRepository.create(data));
+    const newLokasi = this.lokasiRepository.create(data);
+    const result = await this.lokasiRepository.save(newLokasi);
+    console.log("Lokasi berhasil dibuat:", result);
+    return result;
   }
 
   async updateLokasi(id: number, data: UpdateLokasiDto) {
+    console.log(`Memperbarui lokasi ID: ${id} dengan data:`, data);
+    
     const lokasi = await this.lokasiRepository.findOneBy({ id_lokasi: id });
     if (!lokasi) {
       throw new NotFoundException('Lokasi tidak ditemukan');
@@ -369,30 +428,41 @@ export class MasterDataService {
     }
 
     await this.lokasiRepository.update(id, data);
-    return this.lokasiRepository.findOne({
+    const result = await this.lokasiRepository.findOne({
       where: { id_lokasi: id },
       relations: ['gedung', 'unitKerja']
     });
+    console.log("Lokasi berhasil diperbarui:", result);
+    return result;
   }
 
   async removeLokasi(id: number) {
+    console.log(`Menghapus lokasi ID: ${id}`);
+    
     const lokasi = await this.lokasiRepository.findOneBy({ id_lokasi: id });
     if (!lokasi) {
       throw new NotFoundException('Lokasi tidak ditemukan');
     }
 
     await this.lokasiRepository.delete(id);
+    console.log("Lokasi berhasil dihapus");
     return { message: 'Lokasi berhasil dihapus' };
   }
 
-  // --- Metode untuk Kategori Item ---
+  // === METODE UNTUK KATEGORI ITEM ===
+  
   async findAllKategoriItem() {
-    return this.kategoriItemRepository.find({
+    console.log("Mengambil semua data kategori item");
+    const kategori = await this.kategoriItemRepository.find({
       order: { nama_kategori: 'ASC' }
     });
+    console.log(`Ditemukan ${kategori.length} kategori item`);
+    return kategori;
   }
 
   async createKategoriItem(data: CreateKategoriItemDto) {
+    console.log("Membuat kategori item baru:", data);
+    
     // Cek apakah nama sudah ada
     const existing = await this.kategoriItemRepository.findOne({
       where: { nama_kategori: data.nama_kategori }
@@ -402,10 +472,15 @@ export class MasterDataService {
       throw new BadRequestException('Nama kategori sudah digunakan');
     }
     
-    return this.kategoriItemRepository.save(this.kategoriItemRepository.create(data));
+    const newKategori = this.kategoriItemRepository.create(data);
+    const result = await this.kategoriItemRepository.save(newKategori);
+    console.log("Kategori item berhasil dibuat:", result);
+    return result;
   }
 
   async updateKategoriItem(id: number, data: UpdateKategoriItemDto) {
+    console.log(`Memperbarui kategori item ID: ${id} dengan data:`, data);
+    
     const kategori = await this.kategoriItemRepository.findOneBy({ id_kategori: id });
     if (!kategori) {
       throw new NotFoundException('Kategori Item tidak ditemukan');
@@ -423,10 +498,14 @@ export class MasterDataService {
     }
 
     await this.kategoriItemRepository.update(id, data);
-    return this.kategoriItemRepository.findOneBy({ id_kategori: id });
+    const result = await this.kategoriItemRepository.findOneBy({ id_kategori: id });
+    console.log("Kategori item berhasil diperbarui:", result);
+    return result;
   }
 
   async removeKategoriItem(id: number) {
+    console.log(`Menghapus kategori item ID: ${id}`);
+    
     const kategori = await this.kategoriItemRepository.findOneBy({ id_kategori: id });
     if (!kategori) {
       throw new NotFoundException('Kategori Item tidak ditemukan');
@@ -442,18 +521,25 @@ export class MasterDataService {
     }
 
     await this.kategoriItemRepository.delete(id);
+    console.log("Kategori item berhasil dihapus");
     return { message: 'Kategori Item berhasil dihapus' };
   }
 
-  // --- Metode untuk Master Item ---
+  // === METODE UNTUK MASTER ITEM ===
+  
   async findAllMasterItem() {
-    return this.masterItemRepository.find({ 
+    console.log("Mengambil semua data master item");
+    const item = await this.masterItemRepository.find({ 
       relations: ['kategori'],
       order: { nama_item: 'ASC' }
     });
+    console.log(`Ditemukan ${item.length} master item`);
+    return item;
   }
 
   async createMasterItem(data: CreateMasterItemDto) {
+    console.log("Membuat master item baru:", data);
+    
     // Cek apakah kode sudah ada
     const existing = await this.masterItemRepository.findOne({
       where: { kode_item: data.kode_item }
@@ -472,10 +558,15 @@ export class MasterDataService {
       throw new BadRequestException('Kategori item tidak ditemukan');
     }
     
-    return this.masterItemRepository.save(this.masterItemRepository.create(data));
+    const newItem = this.masterItemRepository.create(data);
+    const result = await this.masterItemRepository.save(newItem);
+    console.log("Master item berhasil dibuat:", result);
+    return result;
   }
 
   async updateMasterItem(id: number, data: UpdateMasterItemDto) {
+    console.log(`Memperbarui master item ID: ${id} dengan data:`, data);
+    
     const item = await this.masterItemRepository.findOneBy({ id_item: id });
     if (!item) {
       throw new NotFoundException('Master Item tidak ditemukan');
@@ -504,24 +595,32 @@ export class MasterDataService {
     }
 
     await this.masterItemRepository.update(id, data);
-    return this.masterItemRepository.findOne({
+    const result = await this.masterItemRepository.findOne({
       where: { id_item: id },
       relations: ['kategori']
     });
+    console.log("Master item berhasil diperbarui:", result);
+    return result;
   }
 
   async removeMasterItem(id: number) {
+    console.log(`Menghapus master item ID: ${id}`);
+    
     const item = await this.masterItemRepository.findOneBy({ id_item: id });
     if (!item) {
       throw new NotFoundException('Master Item tidak ditemukan');
     }
 
     await this.masterItemRepository.delete(id);
+    console.log("Master item berhasil dihapus");
     return { message: 'Master Item berhasil dihapus' };
   }
 
-  // --- 👇 PERBAIKAN METODE CRUD UNTUK KAMPUS 👇 ---
+  // === METODE UNTUK KAMPUS ===
+  
   async createKampus(createKampusDto: CreateKampusDto): Promise<Kampus> {
+    console.log("Membuat kampus baru:", createKampusDto);
+    
     // Cek apakah kode sudah ada
     const existing = await this.kampusRepository.findOne({
       where: { kode_kampus: createKampusDto.kode_kampus }
@@ -531,17 +630,23 @@ export class MasterDataService {
       throw new BadRequestException('Kode kampus sudah digunakan');
     }
     
-    const kampusBaru = this.kampusRepository.create(createKampusDto);
-    return this.kampusRepository.save(kampusBaru);
+    const newKampus = this.kampusRepository.create(createKampusDto);
+    const result = await this.kampusRepository.save(newKampus);
+    console.log("Kampus berhasil dibuat:", result);
+    return result;
   }
 
   async findAllKampus(): Promise<Kampus[]> {
-    return this.kampusRepository.find({ 
+    console.log("Mengambil semua data kampus");
+    const kampus = await this.kampusRepository.find({ 
       order: { nama_kampus: 'ASC' } 
     });
+    console.log(`Ditemukan ${kampus.length} kampus`);
+    return kampus;
   }
 
   async findOneKampus(id: number): Promise<Kampus> {
+    console.log(`Mencari kampus dengan ID: ${id}`);
     const kampus = await this.kampusRepository.findOneBy({ id_kampus: id });
     if (!kampus) {
       throw new NotFoundException(`Kampus dengan ID ${id} tidak ditemukan`);
@@ -550,6 +655,8 @@ export class MasterDataService {
   }
 
   async updateKampus(id: number, updateKampusDto: UpdateKampusDto): Promise<Kampus> {
+    console.log(`Memperbarui kampus ID: ${id} dengan data:`, updateKampusDto);
+    
     const kampus = await this.findOneKampus(id);
     
     // Cek apakah kode sudah ada (kecuali untuk kampus yang sama)
@@ -564,10 +671,14 @@ export class MasterDataService {
     }
     
     Object.assign(kampus, updateKampusDto);
-    return this.kampusRepository.save(kampus);
+    const result = await this.kampusRepository.save(kampus);
+    console.log("Kampus berhasil diperbarui:", result);
+    return result;
   }
 
   async removeKampus(id: number): Promise<{ message: string }> {
+    console.log(`Menghapus kampus ID: ${id}`);
+    
     const kampus = await this.findOneKampus(id);
     
     // Cek apakah ada gedung yang terkait
@@ -580,38 +691,49 @@ export class MasterDataService {
     }
     
     await this.kampusRepository.delete(id);
+    console.log("Kampus berhasil dihapus");
     return { message: 'Kampus berhasil dihapus' };
   }
-  // --- 👆 BATAS PERBAIKAN CRUD KAMPUS 👆 ---
 
-  // TAMBAHKAN 2 METODE BARU UNTUK FITUR LAPORAN DI BAWAH INI
+  // === METODE KHUSUS UNTUK FITUR LAPORAN ===
   
   /**
    * Metode untuk mendapatkan unit kerja berdasarkan gedung
    */
   async findUnitKerjaByGedung(id_gedung: number): Promise<UnitKerja[]> {
-    // Cari lokasi di gedung tertentu dan dapatkan unit kerja yang unik
-    const distinctUnitKerja = await this.lokasiRepository
-      .createQueryBuilder('lokasi')
-      .innerJoin('lokasi.unitKerja', 'unitKerja')
-      .where('lokasi.id_gedung = :id_gedung', { id_gedung })
-      .select(['unitKerja.id_unit_kerja', 'unitKerja.kode_unit', 'unitKerja.nama_unit', 'unitKerja.id_unit_utama'])
-      .distinct(true)
-      .getRawMany();
-
-    return distinctUnitKerja.map(item => ({
-      id_unit_kerja: item.unitKerja_id_unit_kerja,
-      kode_unit: item.unitKerja_kode_unit,
-      nama_unit: item.unitKerja_nama_unit,
-      id_unit_utama: item.unitKerja_id_unit_utama
-    })) as UnitKerja[];
+    console.log(`Mencari unit kerja untuk gedung ID: ${id_gedung}`);
+    
+    // Pendekatan yang lebih sederhana dan lebih dapat diandalkan
+    // Cari semua lokasi di gedung ini dan dapatkan unit kerja yang terkait
+    const lokasiList = await this.lokasiRepository.find({
+      where: { id_gedung },
+      relations: ['unitKerja']
+    });
+    
+    console.log(`Ditemukan ${lokasiList.length} lokasi di gedung ini`);
+    
+    // Ekstrak unit kerja unik dari lokasi
+    const unitKerjaMap = new Map<number, UnitKerja>();
+    
+    lokasiList.forEach(lokasi => {
+      if (lokasi.unitKerja && lokasi.id_unit_kerja) {
+        unitKerjaMap.set(lokasi.id_unit_kerja, lokasi.unitKerja);
+      }
+    });
+    
+    const unitKerjaList = Array.from(unitKerjaMap.values());
+    console.log('Unit kerja yang ditemukan:', unitKerjaList);
+    
+    return unitKerjaList;
   }
 
   /**
    * Metode untuk mendapatkan lokasi berdasarkan gedung dan unit kerja
    */
   async findLokasiByGedungAndUnit(gedungId: number, unitKerjaId: number): Promise<Lokasi[]> {
-    return this.lokasiRepository.find({
+    console.log(`Mencari lokasi untuk gedung ID: ${gedungId} dan unit kerja ID: ${unitKerjaId}`);
+    
+    const lokasiList = await this.lokasiRepository.find({
       where: { 
         id_gedung: gedungId,
         id_unit_kerja: unitKerjaId
@@ -619,5 +741,10 @@ export class MasterDataService {
       relations: ['gedung', 'unitKerja'],
       order: { nama_ruangan: 'ASC' }
     });
+    
+    console.log(`Ditemukan ${lokasiList.length} lokasi`);
+    console.log('Detail lokasi:', lokasiList);
+    
+    return lokasiList;
   }
 }

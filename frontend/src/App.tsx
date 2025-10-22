@@ -13,16 +13,18 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage"; 
 import { UsersPage } from "./pages/UsersPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { RolesPage } from "./pages/RolesPage";
 import { MasterDataPage } from "./pages/MasterDataPage";
 import { AssetsPage } from './pages/AssetsPage';
+import { AuthNavigationHandler } from "./components/AuthNavigationHandler";
 import { ReportByLocationPage } from "./pages/ReportByLocationPage";
 import { AssetDetailPage } from './components/AssetDetailPage';
 import { AssetCreatePage } from './components/AssetCreatePage';
 import { QRCodeGenerator } from "./components/qr/QRCodeGenerator";
 import QRCodeListPage from "./components/qr/QRCodeListPage";
 
-// 🧩 Protected Route Component
+// Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -40,7 +42,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
-// 🌐 Public Route Component
+// Public Route Component
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" />;
@@ -76,6 +78,7 @@ function AppRoutes() {
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="roles" element={<RolesPage />} />
           <Route path="master-data" element={<MasterDataPage />} />
           <Route path="transactions" element={<div>Transactions Page</div>} />
@@ -85,7 +88,7 @@ function AppRoutes() {
           <Route path="assets" element={<AssetsPage />} />
           <Route path="assets/new" element={<AssetCreatePage />} />
           <Route path="assets/:id" element={<AssetDetailPage />} />
-          <Route path="qrcodes" element={<QRCodeListPage />} /> {/* Tambahkan route ini */}
+          <Route path="qrcodes" element={<QRCodeListPage />} />
           <Route path={newLocal} element={<QRCodeGenerator value={""} />} />
         </Route>
 
@@ -100,6 +103,7 @@ function App() {
   return (
     <AuthProvider>  
       <Router>
+        <AuthNavigationHandler />
         <AppRoutes />
       </Router>
     </AuthProvider>

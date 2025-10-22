@@ -1,24 +1,24 @@
-// src/auth/jwt.strategy.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
+// backend/src/auth/jwt.strategy.ts
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { UsersService } from '../users/users.service';
+import { PassportStrategy } from '@nestjs/passport';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private usersService: UsersService) {
+  constructor(private configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'bpt@uigm',
-    });
+      secretOrKey: configService.get<string>('JWT_SECRET'),
+    } as any); // Tambahkan 'as any' untuk mengatasi error tipe
   }
 
   async validate(payload: any) {
-    const user = await this.usersService.findOneById(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-    return user;
+    return { 
+      id_user: payload.sub, 
+      username: payload.username, 
+      roles: payload.roles 
+    };
   }
 }

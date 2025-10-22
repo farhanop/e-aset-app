@@ -1,19 +1,11 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToMany,
-  JoinTable,
-} from 'typeorm';
+// backend/src/users/user.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable } from 'typeorm';
 import { Role } from '../roles/entities/role.entity';
 
-@Entity({ name: 'tbl_users' })
+@Entity('tbl_users') // Sesuaikan dengan nama tabel di database
 export class User {
   @PrimaryGeneratedColumn()
   id_user: number;
-
-  @Column()
-  nama_lengkap: string;
 
   @Column({ unique: true })
   username: string;
@@ -21,27 +13,26 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ select: false }) // Sembunyikan dari query biasa demi keamanan
+  @Column()
   password: string;
 
-  @Column({
-    type: 'enum',
-    enum: ['aktif', 'nonaktif'],
-    default: 'aktif',
-  })
-  status: string;
+  @Column()
+  nama_lengkap: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ nullable: true })
   nomor_telepon: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ nullable: true })
   foto_profil: string;
 
-  @ManyToMany(() => Role, (role) => role.users)
+  @Column({ default: 'aktif' })
+  status: string;
+
+  @ManyToMany(() => Role, role => role.users)
   @JoinTable({
-    name: 'tbl_user_roles',
+    name: 'tbl_user_roles', // Sesuaikan dengan nama tabel di database
     joinColumn: { name: 'id_user', referencedColumnName: 'id_user' },
-    inverseJoinColumn: { name: 'id_role', referencedColumnName: 'id_role' },
+    inverseJoinColumn: { name: 'id_role', referencedColumnName: 'id_role' }
   })
   roles: Role[];
 }

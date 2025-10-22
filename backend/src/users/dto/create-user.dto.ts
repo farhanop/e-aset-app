@@ -1,11 +1,7 @@
-// src/users/dto/create-user.dto.ts
-import { IsString, IsNotEmpty, IsEmail, MinLength } from 'class-validator';
+// backend/src/users/dto/create-user.dto.ts
+import { IsString, IsEmail, IsNotEmpty, MinLength } from 'class-validator';
 
 export class CreateUserDto {
-  @IsString()
-  @IsNotEmpty()
-  nama_lengkap: string;
-
   @IsString()
   @IsNotEmpty()
   username: string;
@@ -18,4 +14,8 @@ export class CreateUserDto {
   @IsNotEmpty()
   @MinLength(6)
   password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  nama_lengkap: string;
 }

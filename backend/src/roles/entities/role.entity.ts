@@ -1,15 +1,9 @@
-// src/roles/entities/role.entity.ts
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToMany,
-  JoinTable,
-} from 'typeorm';
-import { Permission } from './permission.entity';
+// backend/src/roles/entities/role.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable } from 'typeorm';
 import { User } from '../../users/user.entity';
+import { Permission } from './permission.entity';
 
-@Entity({ name: 'tbl_roles' })
+@Entity('tbl_roles')
 export class Role {
   @PrimaryGeneratedColumn()
   id_role: number;
@@ -17,24 +11,12 @@ export class Role {
   @Column({ unique: true })
   nama_role: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   deskripsi: string;
 
-   @ManyToMany(() => User, (user) => user.roles)
+  @ManyToMany(() => User, user => user.roles)
   users: User[];
 
-  // Relasi ke Permission (jika ada)
-  @ManyToMany(() => Permission, (permission) => permission.roles)
-
-  // 👇 TAMBAHKAN BAGIAN INI
-  @ManyToMany(() => Permission)
-  @JoinTable({
-    name: 'tbl_role_permissions', // Nama tabel penghubung
-    joinColumn: { name: 'id_role', referencedColumnName: 'id_role' },
-    inverseJoinColumn: {
-      name: 'id_permission',
-      referencedColumnName: 'id_permission',
-    },
-  })
+  @ManyToMany(() => Permission, permission => permission.roles)
   permissions: Permission[];
 }

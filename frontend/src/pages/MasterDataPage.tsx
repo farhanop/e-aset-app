@@ -192,17 +192,34 @@ function CrudTab<T extends { [key: string]: any }>({
     }
   };
 
+  // Fungsi untuk menangani pembukaan modal
   const handleOpenModal = (item: T | null = null) => { 
+    console.log(`CrudTab handleOpenModal called with:`, item);
     setEditingItem(item); 
     setIsModalOpen(true); 
   };
   
+  // Fungsi untuk menangani penutupan modal
   const handleCloseModal = () => { 
+    console.log(`CrudTab handleCloseModal called`);
     setIsModalOpen(false); 
     setEditingItem(null); 
   };
   
+  // Fungsi untuk menangani penyimpanan data
   const handleSave = async (formData: any) => {
+    console.log(`CrudTab handleSave called with:`, formData);
+    
+    if (typeof formData !== 'object' || formData === null) {
+      console.error("Invalid form data:", formData);
+      toast.error("Data formulir tidak valid", {
+        position: "top-right",
+        autoClose: 3000,
+        theme: theme === "dark" ? "dark" : "light",
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       if (editingItem) {
@@ -524,12 +541,12 @@ function CrudTab<T extends { [key: string]: any }>({
       >
         <FormComponent 
           initialData={editingItem} 
-          onSubmit={handleSave} 
+          onSave={handleSave}  // Menggunakan onSave
           onCancel={handleCloseModal}
           isLoading={isSubmitting}
         />
       </Modal>
-    </div>
+    </div>  
   );
 }
 
@@ -586,7 +603,7 @@ export function MasterDataPage() {
       key: "kategori",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M17 10a1 1 0 01-1 1H4a1 1 0 110-2h12a1 1 0 011 1zm-7 5a1 1 0 01-1 1H4a1 1 0 110-2h5a1 1 0 011 1zm3-7a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm-3 3a1 1 0 011-1h6a1 1 0 110 2h-6a1 1 0 01-1-1zm-3 3a1 1 0 011-1h10a1 1 0 110 2H7a1 1 0 01-1-1z" clipRule="evenodd" />
+          <path fillRule="evenodd" d="M17 10a1 1 0 01-1 1H4a1 1 0 110-2h12a1 1 0 011 1zm-7 5a1 1 0 01-1 1H4a1 1 0 110 2h5a1 1 0 001-1zm3-7a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm-3 3a1 1 0 011-1h6a1 1 0 110 2h-6a1 1 0 01-1-1zm-3 3a1 1 0 011-1h10a1 1 0 110 2H7a1 1 0 01-1-1z" clipRule="evenodd" />
         </svg>
       )
     },

@@ -1,3 +1,4 @@
+// backend/src/users/users.service.ts
 import {
   Injectable,
   ConflictException,
@@ -11,6 +12,8 @@ import { Role } from '../roles/entities/role.entity';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { join } from 'path';
+import { existsSync, unlinkSync } from 'fs';
 
 @Injectable()
 export class UsersService {
@@ -27,6 +30,16 @@ export class UsersService {
   private excludePassword(user: User): Omit<User, 'password'> {
     const { password, ...result } = user;
     return result;
+  }
+
+  /**
+   * Helper untuk melakukan hash pada password
+   * @param password - Password yang akan di-hash
+   * @returns Password yang sudah di-hash
+   */
+  async hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt();
+    return bcrypt.hash(password, salt);
   }
 
   /**
@@ -47,8 +60,7 @@ export class UsersService {
     }
 
     // Proses hashing password
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await this.hashPassword(password);
 
     // Buat entitas user baru
     const user = this.usersRepository.create({
@@ -89,37 +101,86 @@ export class UsersService {
   }
 
   /**
-   * Mencari satu pengguna berdasarkan ID-nya.
-   * @param id - ID pengguna yang dicari.
+   * Mencari satu pengguna berdasarkan username-nya.
+   * @param username - Username yang dicari.
    * @returns Objek pengguna tanpa password.
    */
-  async findOneById(id: number): Promise<Omit<User, 'password'>> {
-    const user = await this.usersRepository.findOne({
-      where: { id_user: id },
-      relations: ['roles'],
+  async findOne(username: string): Promise<Omit<User, 'password'> | undefined> {
+    const user = await this.usersRepository.findOne({ 
+      where: { username },
+      relations: ['roles'] // Pastikan memuat roles
     });
     
     if (!user) {
-      throw new NotFoundException(`User dengan ID ${id} tidak ditemukan`);
+      return undefined;
     }
     
     return this.excludePassword(user);
   }
 
   /**
+   * Mencari satu pengguna berdasarkan ID-nya.
+   * @param id - ID pengguna yang dicari.
+   * @returns Objek pengguna tanpa password.
+   */
+  async findOneById(id: number): Promise<Omit<User, 'password'> | undefined> {
+    const user = await this.usersRepository.findOne({ 
+      where: { id_user: id },
+      relations: ['roles'] // Memuat roles, tapi tidak password
+    });
+    
+    if (!user) {
+      return undefined;
+    }
+    
+    return this.excludePassword(user);
+  }
+
+  /**
+   * Mencari satu pengguna berdasarkan email-nya.
+   * @param email - Email yang dicari.
+   * @returns Objek pengguna tanpa password.
+   */
+  async findOneByEmail(email: string): Promise<Omit<User, 'password'> | undefined> {
+    const user = await this.usersRepository.findOne({ where: { email } });
+    
+    if (!user) {
+      return undefined;
+    }
+    
+    return this.excludePassword(user);
+  }
+
+  /**
+   * Metode khusus untuk mengambil data user TERMASUK HASH PASSWORD
+   * @param id - ID pengguna yang dicari.
+   * @returns Objek pengguna (termasuk password) atau undefined jika tidak ditemukan.
+   */
+  async findOneByIdWithPassword(id: number): Promise<User | undefined> {
+    const user = await this.usersRepository.findOne({
+      where: { id_user: id },
+      select: ['id_user', 'username', 'password', 'foto_profil'], // Pilih kolom spesifik
+    });
+    
+    return user || undefined;
+  }
+
+  /**
    * Mencari satu pengguna berdasarkan username-nya, termasuk hash password.
    * Digunakan oleh AuthService untuk validasi login.
    * @param username - Username yang dicari.
-   * @returns Objek pengguna (termasuk password) atau null jika tidak ditemukan.
+   * @returns Objek pengguna (termasuk password) atau undefined jika tidak ditemukan.
    */
-  async findOneByUsername(username: string): Promise<User | null> {
+  async findOneByUsername(username: string): Promise<User | undefined> {
     // Menggunakan query builder untuk secara eksplisit memilih kolom password
-    return this.usersRepository
+    const user = await this.usersRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.roles', 'roles')
       .addSelect('user.password') // Memaksa kolom password untuk disertakan
       .where('user.username = :username', { username })
       .getOne();
+    
+    return user || undefined;
   }
 
   /**
@@ -130,19 +191,21 @@ export class UsersService {
    */
   async update(
     id: number,
-    updateUserDto: UpdateUserDto,
+    updateUserDto: Partial<UpdateUserDto> | { 
+      password?: string; 
+      foto_profil?: string | null;
+    },
   ): Promise<Omit<User, 'password'>> {
-    const user = await this.usersRepository.findOne({
-      where: { id_user: id },
-      relations: ['roles'],
-    });
+    // 'Partial<UpdateUserDto>' akan menangani update profil
+    // '{ password?: string; foto_profil?: string | null }' akan menangani ganti password dan foto profil
     
+    const user = await this.findOneById(id);
     if (!user) {
-      throw new NotFoundException(`User dengan ID ${id} tidak ditemukan`);
+      throw new NotFoundException('User tidak ditemukan');
     }
-
+    
     // Cek jika username atau email baru sudah digunakan
-    if (updateUserDto.username && updateUserDto.username !== user.username) {
+    if ('username' in updateUserDto && updateUserDto.username !== user.username) {
       const existingUser = await this.usersRepository.findOne({
         where: { username: updateUserDto.username },
       });
@@ -152,7 +215,7 @@ export class UsersService {
       }
     }
 
-    if (updateUserDto.email && updateUserDto.email !== user.email) {
+    if ('email' in updateUserDto && updateUserDto.email !== user.email) {
       const existingUser = await this.usersRepository.findOne({
         where: { email: updateUserDto.email },
       });
@@ -163,14 +226,22 @@ export class UsersService {
     }
 
     // Jika ada password baru, lakukan hashing
-    if (updateUserDto.password) {
-      const salt = await bcrypt.genSalt();
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, salt);
+    if ('password' in updateUserDto && updateUserDto.password) {
+      updateUserDto.password = await this.hashPassword(updateUserDto.password);
     }
-
+    
+    // Jika ada perubahan foto profil, hapus foto lama jika ada
+    if ('foto_profil' in updateUserDto && user.foto_profil) {
+      const oldPhotoPath = join(process.cwd(), user.foto_profil);
+      if (existsSync(oldPhotoPath)) {
+        unlinkSync(oldPhotoPath);
+      }
+    }
+    
     // Gabungkan data lama dengan data baru
     Object.assign(user, updateUserDto);
-
+    
+    // Simpan data yang sudah di-merge
     const updatedUser = await this.usersRepository.save(user);
     return this.excludePassword(updatedUser);
   }
@@ -188,6 +259,14 @@ export class UsersService {
     
     if (!user) {
       throw new NotFoundException(`User dengan ID ${id} tidak ditemukan`);
+    }
+
+    // Hapus foto profil jika ada
+    if (user.foto_profil) {
+      const photoPath = join(process.cwd(), user.foto_profil);
+      if (existsSync(photoPath)) {
+        unlinkSync(photoPath);
+      }
     }
 
     // Hapus relasi user-roles terlebih dahulu

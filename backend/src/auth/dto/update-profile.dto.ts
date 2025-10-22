@@ -1,0 +1,23 @@
+// backend/src/auth/dto/update-profile.dto.ts
+import { IsString, IsEmail, IsOptional, MaxLength, IsNotEmpty } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export class UpdateProfileDto {
+  @ApiPropertyOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  nama_lengkap: string;
+
+  @ApiPropertyOptional()
+  @IsEmail()
+  @IsNotEmpty()
+  @MaxLength(100)
+  email: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  nomor_telepon?: string;
+}
