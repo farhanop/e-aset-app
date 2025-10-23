@@ -20,4 +20,10 @@ export class UpdateProfileDto {
   @IsOptional()
   @MaxLength(20)
   nomor_telepon?: string;
+
+  @ApiPropertyOptional({ description: 'Path ke foto profil di server (mis. /uploads/profile-photos/abc.jpg)' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  foto_profil?: string;
 }

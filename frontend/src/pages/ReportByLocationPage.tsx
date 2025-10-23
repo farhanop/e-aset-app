@@ -1,4 +1,3 @@
-// src/pages/ReportByLocationPage.tsx
 import { useState, useEffect, useRef} from 'react';
 import api from '../api/axios';
 import { useTheme } from "../contexts/ThemeContext";
@@ -370,24 +369,24 @@ export function ReportByLocationPage() {
           Laporan Inventaris per Ruangan
         </h1>
         {assets && assets.length > 0 && (
-          <div className="flex items-center space-x-2">
-            <div className={`px-3 py-2 rounded-md text-sm font-medium ${
+          <div className="flex items-center space-x-4">
+            <div className={`px-4 py-2 rounded-xl text-sm font-medium shadow-sm ${
               theme === "dark" 
                 ? "bg-gray-700 text-gray-300" 
-                : "bg-gray-200 text-gray-700"
+                : "bg-gray-100 text-gray-700"
             }`}>
               No. Laporan: {reportNumber}
             </div>
             <button
               onClick={handlePrintClick}
               disabled={loadingAssets}
-              className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${
+              className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 ${
                 theme === "dark" 
                   ? "bg-blue-600 text-white hover:bg-blue-700" 
                   : "bg-blue-600 text-white hover:bg-blue-700"
               } ${loadingAssets ? 'opacity-75 cursor-not-allowed' : ''}`}
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
               </svg>
               Cetak Laporan
@@ -398,18 +397,18 @@ export function ReportByLocationPage() {
 
       {/* Error Message */}
       {error && (
-        <div className={`mb-6 rounded-md p-4 ${
-          theme === "dark" ? "bg-red-900 text-red-100" : "bg-red-100 text-red-800"
+        <div className={`mb-6 rounded-xl p-4 shadow-md ${
+          theme === "dark" ? "bg-red-900/20" : "bg-red-50"
         }`}>
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
               <h3 className={`text-sm font-medium ${
-                theme === "dark" ? "text-red-100" : "text-red-800"
+                theme === "dark" ? "text-red-300" : "text-red-800"
               }`}>
                 {error}
               </h3>
@@ -419,7 +418,7 @@ export function ReportByLocationPage() {
       )}
 
       {/* Filter Section */}
-      <div className={`mb-6 rounded-lg shadow-md p-4 ${
+      <div className={`mb-6 rounded-xl shadow-lg p-5 ${
         theme === "dark" ? "bg-gray-800" : "bg-white"
       }`}>
         <div className="flex justify-between items-center mb-4">
@@ -430,7 +429,7 @@ export function ReportByLocationPage() {
           </h2>
           <button
             onClick={resetFilters}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 ${
               theme === "dark" 
                 ? "bg-gray-700 text-gray-300 hover:bg-gray-600" 
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -440,7 +439,7 @@ export function ReportByLocationPage() {
           </button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Filter Gedung */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${
@@ -450,7 +449,7 @@ export function ReportByLocationPage() {
             </label>
             <div className="relative">
               {loadingGedung ? (
-                <div className={`block w-full pl-3 pr-10 py-2 text-base rounded-md border ${
+                <div className={`block w-full pl-3 pr-10 py-3 text-base rounded-xl border shadow-sm ${
                   theme === "dark" 
                     ? "bg-gray-700 border-gray-600 text-white" 
                     : "bg-white border-gray-300 text-gray-900"
@@ -472,7 +471,7 @@ export function ReportByLocationPage() {
                       setSelectedUnit('');
                       setSelectedLokasi('');
                     }}
-                    className={`block w-full pl-3 pr-10 py-2 text-base rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`block w-full pl-3 pr-10 py-3 text-base rounded-xl border shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
                       theme === "dark" 
                         ? "bg-gray-700 border-gray-600 text-white" 
                         : "bg-white border-gray-300 text-gray-900"
@@ -506,7 +505,7 @@ export function ReportByLocationPage() {
             </label>
             <div className="relative">
               {loadingUnit ? (
-                <div className={`block w-full pl-3 pr-10 py-2 text-base rounded-md border ${
+                <div className={`block w-full pl-3 pr-10 py-3 text-base rounded-xl border shadow-sm ${
                   theme === "dark" 
                     ? "bg-gray-700 border-gray-600 text-white" 
                     : "bg-white border-gray-300 text-gray-900"
@@ -528,7 +527,7 @@ export function ReportByLocationPage() {
                       setSelectedLokasi('');
                     }}
                     disabled={!selectedGedung}
-                    className={`block w-full pl-3 pr-10 py-2 text-base rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`block w-full pl-3 pr-10 py-3 text-base rounded-xl border shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
                       !selectedGedung 
                         ? (theme === "dark" ? "bg-gray-700 border-gray-600 text-gray-400" : "bg-gray-100 border-gray-300 text-gray-500")
                         : (theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-900")
@@ -562,7 +561,7 @@ export function ReportByLocationPage() {
             </label>
             <div className="relative">
               {loadingLokasi ? (
-                <div className={`block w-full pl-3 pr-10 py-2 text-base rounded-md border ${
+                <div className={`block w-full pl-3 pr-10 py-3 text-base rounded-xl border shadow-sm ${
                   theme === "dark" 
                     ? "bg-gray-700 border-gray-600 text-white" 
                     : "bg-white border-gray-300 text-gray-900"
@@ -581,7 +580,7 @@ export function ReportByLocationPage() {
                     value={selectedLokasi}
                     onChange={(e) => setSelectedLokasi(e.target.value)}
                     disabled={!selectedGedung || !selectedUnit}
-                    className={`block w-full pl-3 pr-10 py-2 text-base rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    className={`block w-full pl-3 pr-10 py-3 text-base rounded-xl border shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
                       !selectedGedung || !selectedUnit
                         ? (theme === "dark" ? "bg-gray-700 border-gray-600 text-gray-400" : "bg-gray-100 border-gray-300 text-gray-500")
                         : (theme === "dark" ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-900")
@@ -609,7 +608,7 @@ export function ReportByLocationPage() {
       </div>
 
       {/* Tabel untuk menampilkan hasil */}
-      <div className={`rounded-lg shadow-md overflow-hidden ${
+      <div className={`rounded-xl shadow-lg overflow-hidden ${
         theme === "dark" ? "bg-gray-800" : "bg-white"
       }`}>
         {loadingAssets ? (
@@ -618,29 +617,29 @@ export function ReportByLocationPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span className={theme === "dark" ? "text-gray-300" : "text-gray-600"}>Memuat data inventaris...</span>
+            <span className={`text-lg ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>Memuat data inventaris...</span>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}>
+              <thead className={theme === "dark" ? "bg-gray-750" : "bg-gray-50"}>
                 <tr>
-                  <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  <th scope="col" className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                     theme === "dark" ? "text-gray-300" : "text-gray-500"
                   }`}>
                     Kode Aset
                   </th>
-                  <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  <th scope="col" className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                     theme === "dark" ? "text-gray-300" : "text-gray-500"
                   }`}>
                     Nama Barang
                   </th>
-                  <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  <th scope="col" className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                     theme === "dark" ? "text-gray-300" : "text-gray-500"
                   }`}>
                     Status
                   </th>
-                  <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  <th scope="col" className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                     theme === "dark" ? "text-gray-300" : "text-gray-500"
                   }`}>
                     Kondisi
@@ -654,29 +653,32 @@ export function ReportByLocationPage() {
                   assets.map((asset) => (
                     <tr 
                       key={asset.id_aset} 
-                      className={`transition-colors ${
-                        theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-50"
+                      className={`transition-colors duration-150 ${
+                        theme === "dark" ? "hover:bg-gray-750" : "hover:bg-gray-50"
                       }`}
                     >
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-mono ${
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-mono font-medium ${
                         theme === "dark" ? "text-white" : "text-gray-900"
                       }`}>
                         {asset.kode_aset}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                         theme === "dark" ? "text-white" : "text-gray-900"
                       }`}>
                         {asset.item && asset.item.nama_item ? asset.item.nama_item : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                          ${asset.status_aset === 'Tersedia' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 
-                            asset.status_aset === 'Dipinjam' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100' : 
-                            'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'}`}>
+                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          asset.status_aset === 'Tersedia' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-300' : 
+                            asset.status_aset === 'Dipinjam' 
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-300' : 
+                            'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-300'
+                        }`}>
                           {asset.status_aset || '-'}
                         </span>
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}>
                         {asset.kondisi_terakhir || '-'}
@@ -686,10 +688,10 @@ export function ReportByLocationPage() {
                 ) : (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
-                      <h3 className={`mt-2 text-sm font-medium ${
+                      <h3 className={`mt-2 text-lg font-medium ${
                         theme === "dark" ? "text-gray-200" : "text-gray-900"
                       }`}>
                         Tidak ada data

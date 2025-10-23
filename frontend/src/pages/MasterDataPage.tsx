@@ -1,4 +1,3 @@
-// frontend/src/pages/MasterDataPage.tsx
 import { useState, useEffect, Fragment, ReactNode } from "react";
 import api from "../api/axios";
 import Skeleton from "react-loading-skeleton";
@@ -94,25 +93,34 @@ const TableSkeleton = () => {
   const { theme } = useTheme();
   
   return (
-    <div className={`p-6 rounded-lg shadow-md ${
+    <div className={`p-6 rounded-xl shadow-lg ${
       theme === "dark" ? "bg-gray-800" : "bg-white"
     }`}>
-      <Skeleton 
-        height={40} 
-        className="mb-4" 
-        baseColor={theme === "dark" ? "#374151" : "#f3f4f6"}
-        highlightColor={theme === "dark" ? "#4b5563" : "#e5e7eb"}
-      />
+      <div className="flex justify-between items-center mb-6">
+        <Skeleton 
+          height={40} 
+          width={200} 
+          baseColor={theme === "dark" ? "#374151" : "#f3f4f6"}
+          highlightColor={theme === "dark" ? "#4b5563" : "#e5e7eb"}
+        />
+        <Skeleton 
+          height={40} 
+          width={120} 
+          baseColor={theme === "dark" ? "#374151" : "#f3f4f6"}
+          highlightColor={theme === "dark" ? "#4b5563" : "#e5e7eb"}
+        />
+      </div>
       {Array(5)
         .fill(0)
         .map((_, index) => (
-          <Skeleton 
-            key={index} 
-            height={35} 
-            className="mb-2" 
-            baseColor={theme === "dark" ? "#374151" : "#f3f4f6"}
-            highlightColor={theme === "dark" ? "#4b5563" : "#e5e7eb"}
-          />
+          <div key={index} className="mb-3">
+            <Skeleton 
+              height={60} 
+              className="rounded-lg" 
+              baseColor={theme === "dark" ? "#374151" : "#f3f4f6"}
+              highlightColor={theme === "dark" ? "#4b5563" : "#e5e7eb"}
+            />
+          </div>
         ))}
     </div>
   );
@@ -135,12 +143,14 @@ interface CrudTabProps<T> {
   idAccessor: keyof T;
   searchableColumns?: (keyof T)[];
   tabName: string;
+  tabIcon?: ReactNode;
+  tabColor?: string;
 }
 
 function CrudTab<T extends { [key: string]: any }>({
   fetchUrl, deleteUrlPrefix, patchUrlPrefix, postUrl,
   columns, FormComponent, modalTitle, idAccessor,
-  searchableColumns = [], tabName
+  searchableColumns = [], tabName, tabIcon, tabColor = "blue"
 }: CrudTabProps<T>) {
   const { theme } = useTheme();
   const [data, setData] = useState<T[]>([]);
@@ -329,17 +339,22 @@ function CrudTab<T extends { [key: string]: any }>({
   };
   
   if (error) return (
-    <div className={`text-center p-6 rounded-lg ${
+    <div className={`text-center p-8 rounded-xl ${
       theme === "dark" ? "bg-red-900/20" : "bg-red-50"
     }`}>
-      <p className="text-red-500">{error}</p>
+      <div className="mb-4">
+        <svg className="mx-auto h-12 w-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+      </div>
+      <p className="text-red-500 mb-4">{error}</p>
       <button 
         onClick={fetchData}
-        className={`mt-4 px-4 py-2 rounded-md ${
+        className={`mt-4 px-6 py-3 rounded-lg ${
           theme === "dark" 
             ? "bg-blue-600 hover:bg-blue-700" 
             : "bg-blue-500 hover:bg-blue-600"
-        } text-white transition-colors duration-200`}
+        } text-white transition-all duration-200 font-medium shadow-md hover:shadow-lg`}
       >
         Coba Lagi
       </button>
@@ -349,6 +364,83 @@ function CrudTab<T extends { [key: string]: any }>({
   if (loading) return <TableSkeleton />;
   
   const displayData = searchTerm ? filteredData : data;
+  
+  // Fungsi untuk mendapatkan kelas warna berdasarkan tabColor
+  const getColorClasses = (color: string, type: 'bg' | 'text' | 'border' | 'ring' | 'hover') => {
+    const colorMap: Record<string, Record<string, string>> = {
+      blue: {
+        bg: 'bg-blue-500',
+        text: 'text-blue-500',
+        border: 'border-blue-500',
+        ring: 'ring-blue-500',
+        hover: 'hover:bg-blue-600'
+      },
+      green: {
+        bg: 'bg-green-500',
+        text: 'text-green-500',
+        border: 'border-green-500',
+        ring: 'ring-green-500',
+        hover: 'hover:bg-green-600'
+      },
+      purple: {
+        bg: 'bg-purple-500',
+        text: 'text-purple-500',
+        border: 'border-purple-500',
+        ring: 'ring-purple-500',
+        hover: 'hover:bg-purple-600'
+      },
+      yellow: {
+        bg: 'bg-yellow-500',
+        text: 'text-yellow-500',
+        border: 'border-yellow-500',
+        ring: 'ring-yellow-500',
+        hover: 'hover:bg-yellow-600'
+      },
+      indigo: {
+        bg: 'bg-indigo-500',
+        text: 'text-indigo-500',
+        border: 'border-indigo-500',
+        ring: 'ring-indigo-500',
+        hover: 'hover:bg-indigo-600'
+      },
+      teal: {
+        bg: 'bg-teal-500',
+        text: 'text-teal-500',
+        border: 'border-teal-500',
+        ring: 'ring-teal-500',
+        hover: 'hover:bg-teal-600'
+      },
+      orange: {
+        bg: 'bg-orange-500',
+        text: 'text-orange-500',
+        border: 'border-orange-500',
+        ring: 'ring-orange-500',
+        hover: 'hover:bg-orange-600'
+      }
+    };
+    
+    return colorMap[color]?.[type] || colorMap.blue[type];
+  };
+  
+  const colorClasses = {
+    bg: getColorClasses(tabColor, 'bg'),
+    text: getColorClasses(tabColor, 'text'),
+    border: getColorClasses(tabColor, 'border'),
+    ring: getColorClasses(tabColor, 'ring'),
+    hover: getColorClasses(tabColor, 'hover'),
+    bgLight: theme === "dark" 
+      ? `bg-${tabColor}-900/30` 
+      : `bg-${tabColor}-100`,
+    textLight: theme === "dark" 
+      ? `text-${tabColor}-300` 
+      : `text-${tabColor}-600`,
+    bgLighter: theme === "dark" 
+      ? `bg-${tabColor}-900/20` 
+      : `bg-${tabColor}-50`,
+    textLighter: theme === "dark" 
+      ? `text-${tabColor}-300` 
+      : `text-${tabColor}-700`,
+  };
   
   return (
     <div className="h-full flex flex-col">
@@ -365,8 +457,33 @@ function CrudTab<T extends { [key: string]: any }>({
         theme={theme === "dark" ? "dark" : "light"}
       />
       
+      {/* Stats Card */}
+      <div className={`rounded-xl shadow-lg p-6 mb-6 ${
+        theme === "dark" ? "bg-gray-800" : "bg-white"
+      }`}>
+        <div className="flex items-center">
+          <div className={`p-3 rounded-lg ${colorClasses.bgLight}`}>
+            <div className={`w-8 h-8 ${colorClasses.text}`}>
+              {tabIcon}
+            </div>
+          </div>
+          <div className="ml-4">
+            <p className={`text-sm font-medium ${
+              theme === "dark" ? "text-gray-400" : "text-gray-600"
+            }`}>
+              Total {tabName}
+            </p>
+            <p className={`text-3xl font-bold ${
+              theme === "dark" ? "text-white" : "text-gray-900"
+            }`}>
+              {data.length}
+            </p>
+          </div>
+        </div>
+      </div>
+      
       {/* Header dengan Search dan Add Button */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 p-1">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
         {searchableColumns.length > 0 && (
           <div className="w-full lg:w-80 flex-shrink-0">
             <div className="relative">
@@ -375,7 +492,7 @@ function CrudTab<T extends { [key: string]: any }>({
                 placeholder="Cari..."
                 value={searchTerm}
                 onChange={handleSearch}
-                className={`w-full pl-10 pr-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
+                className={`w-full pl-10 pr-4 py-3 rounded-xl border focus:ring-2 focus:ring-${tabColor}-500 focus:border-${tabColor}-500 transition-all duration-200 ${
                   theme === "dark" 
                     ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" 
                     : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
@@ -395,24 +512,20 @@ function CrudTab<T extends { [key: string]: any }>({
         <div className="flex justify-end w-full lg:w-auto">
           <button 
             onClick={() => handleOpenModal()} 
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow hover:bg-blue-700 transition-all duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2 font-medium hover:shadow-lg"
+            className={`${colorClasses.bg} text-white px-6 py-3 rounded-xl shadow ${colorClasses.hover} transition-all duration-200 flex items-center gap-2 font-medium hover:shadow-lg transform hover:-translate-y-0.5`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Tambah Baru
+            Tambah {tabName}
           </button>
         </div>
       </div>
       
       {/* Search Info */}
       {searchTerm && (
-        <div className={`mb-4 p-4 rounded-lg ${
-          theme === "dark" ? "bg-gray-700" : "bg-blue-50"
-        }`}>
-          <p className={`text-sm ${
-            theme === "dark" ? "text-gray-300" : "text-blue-700"
-          }`}>
+        <div className={`mb-4 p-4 rounded-lg ${colorClasses.bgLighter}`}>
+          <p className={`text-sm ${colorClasses.textLighter}`}>
             Menampilkan {filteredData.length} dari {data.length} data
             {searchTerm && ` untuk pencarian "${searchTerm}"`}
           </p>
@@ -422,9 +535,9 @@ function CrudTab<T extends { [key: string]: any }>({
       {/* Table Container */}
       <div className="flex-1 flex flex-col min-h-0">
         {displayData.length === 0 ? (
-          <div className={`flex-1 flex items-center justify-center p-12 rounded-lg ${
+          <div className={`flex-1 flex items-center justify-center p-12 rounded-xl ${
             theme === "dark" ? "bg-gray-800" : "bg-white"
-          } shadow`}>
+          } shadow-lg`}>
             <div className="text-center">
               <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -441,27 +554,23 @@ function CrudTab<T extends { [key: string]: any }>({
               </p>
               <button
                 onClick={() => handleOpenModal()}
-                className={`inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-md text-white ${
-                  theme === "dark" 
-                    ? "bg-blue-600 hover:bg-blue-700" 
-                    : "bg-blue-500 hover:bg-blue-600"
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200`}
+                className={`inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-xl text-white ${colorClasses.bg} ${colorClasses.hover} focus:outline-none focus:ring-2 focus:ring-offset-2 ${colorClasses.ring} transition-all duration-200 transform hover:-translate-y-0.5`}
               >
                 <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
                 </svg>
-                Tambah Data
+                Tambah {tabName}
               </button>
             </div>
           </div>
         ) : (
-          <div className={`flex-1 rounded-lg shadow-md overflow-hidden flex flex-col ${
+          <div className={`flex-1 rounded-xl shadow-lg overflow-hidden flex flex-col ${
             theme === "dark" ? "bg-gray-800" : "bg-white"
           }`}>
             <div className="overflow-x-auto flex-1">
               <div className="inline-block min-w-full align-middle">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}>
+                  <thead className={theme === "dark" ? "bg-gray-750" : "bg-gray-50"}>
                     <tr>
                       {columns.map((col) => (
                         <th 
@@ -504,17 +613,17 @@ function CrudTab<T extends { [key: string]: any }>({
                           <div className="flex justify-end space-x-3">
                             <button
                               onClick={() => handleOpenModal(item)}
-                              className={`px-4 py-2 rounded-md transition-colors duration-200 ${
+                              className={`px-4 py-2 rounded-lg transition-all duration-200 ${
                                 theme === "dark" 
-                                  ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                                  : "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                                  ? `${colorClasses.bg} ${colorClasses.hover} text-white` 
+                                  : `${colorClasses.bgLight} hover:${colorClasses.bgLight.replace('100', '200')} ${colorClasses.text}`
                               }`}
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleDelete(item[idAccessor])}
-                              className={`px-4 py-2 rounded-md transition-colors duration-200 ${
+                              className={`px-4 py-2 rounded-lg transition-all duration-200 ${
                                 theme === "dark" 
                                   ? "bg-red-600 hover:bg-red-700 text-white" 
                                   : "bg-red-100 hover:bg-red-200 text-red-700"
@@ -541,7 +650,7 @@ function CrudTab<T extends { [key: string]: any }>({
       >
         <FormComponent 
           initialData={editingItem} 
-          onSave={handleSave}  // Menggunakan onSave
+          onSave={handleSave}  
           onCancel={handleCloseModal}
           isLoading={isSubmitting}
         />
@@ -560,7 +669,8 @@ export function MasterDataPage() {
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
         </svg>
-      )
+      ),
+      color: "blue"
     },
     { 
       name: "Gedung", 
@@ -569,7 +679,8 @@ export function MasterDataPage() {
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
         </svg>
-      )
+      ),
+      color: "green"
     },
     { 
       name: "Fakultas", 
@@ -578,7 +689,8 @@ export function MasterDataPage() {
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
         </svg>
-      )
+      ),
+      color: "purple"
     },
     { 
       name: "Prodi/Bagian", 
@@ -587,7 +699,8 @@ export function MasterDataPage() {
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
         </svg>
-      )
+      ),
+      color: "yellow"
     },
     { 
       name: "Ruangan", 
@@ -596,7 +709,8 @@ export function MasterDataPage() {
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
         </svg>
-      )
+      ),
+      color: "indigo"
     },
     { 
       name: "Kategori Item", 
@@ -605,17 +719,18 @@ export function MasterDataPage() {
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M17 10a1 1 0 01-1 1H4a1 1 0 110-2h12a1 1 0 011 1zm-7 5a1 1 0 01-1 1H4a1 1 0 110 2h5a1 1 0 001-1zm3-7a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm-3 3a1 1 0 011-1h6a1 1 0 110 2h-6a1 1 0 01-1-1zm-3 3a1 1 0 011-1h10a1 1 0 110 2H7a1 1 0 01-1-1z" clipRule="evenodd" />
         </svg>
-      )
+      ),
+      color: "teal"
     },
     { 
       name: "Master Item", 
       key: "master-item",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z" clipRule="evenodd" />
-          <path d="M6 10a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" />
+          <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
         </svg>
-      )
+      ),
+      color: "orange"
     }
   ];
 
@@ -646,21 +761,25 @@ export function MasterDataPage() {
         <div className="flex-1 flex flex-col min-h-0">
           <div className={`flex-1 rounded-lg m-4 flex flex-col min-h-0 ${
             theme === "dark" ? "bg-gray-800" : "bg-white"
-          } shadow-lg`}>
+          } shadow-xl`}>
             <Tab.Group>
               {/* Tab Headers - Clean, accessible styling */}
               <div className={`border-b ${
                 theme === "dark" ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"
               }`}>
-                <Tab.List className="flex gap-2 overflow-x-auto px-4 py-2">
+                <Tab.List className="flex gap-2 overflow-x-auto px-4 py-3">
                   {tabs.map((tab) => (
                     <Tab key={tab.key} as={Fragment}>
                       {({ selected }) => (
                         <button
-                          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                             selected
-                              ? (theme === "dark" ? "bg-gray-700 text-blue-300 ring-blue-400" : "bg-white text-blue-600 ring-blue-200")
-                              : (theme === "dark" ? "text-gray-300 hover:bg-gray-750 hover:text-white" : "text-gray-600 hover:bg-gray-100")
+                              ? (theme === "dark" 
+                                ? `bg-${tab.color}-900/30 text-${tab.color}-300 ring-${tab.color}-500` 
+                                : `bg-white text-${tab.color}-600 ring-${tab.color}-200 shadow-sm`)
+                              : (theme === "dark" 
+                                ? "text-gray-300 hover:bg-gray-750 hover:text-white" 
+                                : "text-gray-600 hover:bg-gray-100")
                           }`}
                           aria-current={selected ? 'true' : undefined}
                         >
@@ -695,6 +814,8 @@ export function MasterDataPage() {
                         idAccessor="id_kampus"
                         searchableColumns={['kode_kampus', 'nama_kampus']}
                         tabName="Kampus"
+                        tabIcon={tab.icon}
+                        tabColor={tab.color}
                       />
                     )}
                     
@@ -714,6 +835,8 @@ export function MasterDataPage() {
                         idAccessor="id_gedung"
                         searchableColumns={['kode_gedung', 'nama_gedung']}
                         tabName="Gedung"
+                        tabIcon={tab.icon}
+                        tabColor={tab.color}
                       />
                     )}
                     
@@ -732,6 +855,8 @@ export function MasterDataPage() {
                         idAccessor="id_unit_utama"
                         searchableColumns={['kode_unit_utama', 'nama_unit_utama']}
                         tabName="Fakultas"
+                        tabIcon={tab.icon}
+                        tabColor={tab.color}
                       />
                     )}
 
@@ -751,6 +876,8 @@ export function MasterDataPage() {
                         idAccessor="id_unit_kerja"
                         searchableColumns={['kode_unit', 'nama_unit']}
                         tabName="Prodi/Bagian"
+                        tabIcon={tab.icon}
+                        tabColor={tab.color}
                       />
                     )}
                     
@@ -772,6 +899,8 @@ export function MasterDataPage() {
                         idAccessor="id_lokasi"
                         searchableColumns={['kode_ruangan', 'nama_ruangan']}
                         tabName="Ruangan"
+                        tabIcon={tab.icon}
+                        tabColor={tab.color}
                       />
                     )}
                     
@@ -789,6 +918,8 @@ export function MasterDataPage() {
                         idAccessor="id_kategori"
                         searchableColumns={['nama_kategori']}
                         tabName="Kategori Item"
+                        tabIcon={tab.icon}
+                        tabColor={tab.color}
                       />
                     )}
                     
@@ -809,6 +940,8 @@ export function MasterDataPage() {
                         idAccessor="id_item"
                         searchableColumns={['kode_item', 'nama_item', 'metode_pelacakan']}
                         tabName="Master Item"
+                        tabIcon={tab.icon}
+                        tabColor={tab.color}
                       />
                     )}
                   </Tab.Panel>

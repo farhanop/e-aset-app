@@ -9,7 +9,7 @@ import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { Modal } from '../components/Modal';
 
-// Interface untuk data aset
+// Interface untuk data aset - diperbaiki sesuai dengan database
 interface AssetDetail {
   id_aset: number;
   kode_aset: string;
@@ -17,72 +17,53 @@ interface AssetDetail {
   id_lokasi: number;
   id_unit_kerja: number;
   id_group: number | null;
-  merk: string;
-  tipe_model: string;
-  spesifikasi: string;
-  tgl_perolehan: string;
-  sumber_dana: string;
-  nomor_urut: number;
-  status_aset: string;
-  kondisi_terakhir: string | null;
-  file_qrcode: string | null;
-  file_pengadaan: string | null;
-  is_deleted: number;
-  deleted_at: string | null;
-  deleted_by: string | null;
-  // Data relasi
-  item?: {
-    id_item: number;
-    nama_item: string;
-    kategori?: {
-      id_kategori: number;
-      nama_kategori: string;
-    };
-  };
-  lokasi?: {
-    id_lokasi: number;
-    kode_ruangan: string;
-    nama_ruangan: string;
-    lantai: number;
-    gedung?: {
-      id_gedung: number;
-      kode_gedung: string;
-      nama_gedung: string;
-    };
-  };
-  unitKerja?: {
-    id_unit_kerja: number;
-    kode_unit: string;
-    nama_unit: string;
-    unitUtama?: {
-      id_unit_utama: number;
-      kode_unit_utama: string;
-      nama_unit_utama: string;
-    };
-  };
+  merk: string | null;
+  foto_barang?: string | null;
+  foto_barang_mime?: string | null;
+  file_qrcode?: string | null;
+  item?: any;
+  lokasi?: any;
+  unitKerja?: any;
+  group?: any;
+  tipe_model?: string | null;
+  tgl_perolehan?: string | null;
+  sumber_dana?: string | null;
+  nomor_urut?: string | null;
+  spesifikasi?: string | null;
+  status_aset?: string;
+  kondisi_terakhir?: string | null;
 }
 
-// Custom hook untuk fetching data aset
-function useAssetDetail(id: string | undefined) {
+// Minimal AssetData shape used by QRCodeDisplay/print
+interface AssetData {
+  id_aset: number;
+  kode_aset: string;
+  merk?: string;
+  tipe_model?: string;
+  file_qrcode?: string | null;
+}
+
+// Custom hook to fetch asset detail
+function useAssetDetail(id?: string | null) {
   const [asset, setAsset] = useState<AssetDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
     const fetchAssetDetail = async () => {
-      if (!id) return;
-      
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      setError(null);
-      
+
       try {
-        console.log(`Fetching asset with ID: ${id}`);
-        const response = await api.get(`/assets/${id}`);
-        console.log('Response data:', response.data);
-        setAsset(response.data);
+        const resp = await api.get(`/assets/${id}`);
+        const assetData: AssetDetail = resp.data;
+        setAsset(assetData);
+        setError(null);
       } catch (err: any) {
         console.error('Gagal mengambil detail aset:', err);
-        
         if (err.response?.status === 404) {
           setError('Aset tidak ditemukan');
         } else if (err.response?.status === 401) {
@@ -90,19 +71,21 @@ function useAssetDetail(id: string | undefined) {
         } else {
           setError(`Gagal memuat data aset: ${err.message || 'Silakan coba lagi nanti.'}`);
         }
+        setAsset(null);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchAssetDetail();
   }, [id]);
-  
+
   return { asset, loading, error };
 }
 
 // Helper function untuk format tanggal
-const formatDate = (dateString: string, locale = 'id-ID') => {
+const formatDate = (dateString?: string | null, locale = 'id-ID') => {
+  if (!dateString) return '-';
   try {
     return new Date(dateString).toLocaleDateString(locale, {
       year: 'numeric',
@@ -120,11 +103,9 @@ const getThemeClass = (theme: string, darkClass: string, lightClass: string) => 
   return theme === "dark" ? darkClass : lightClass;
 };
 
-// Helper function untuk mendapatkan warna status
-const getStatusColor = (status: string, theme: string) => {
-  const statusColors: Record<string, { dark: string; light: string }> & {
-    [key: string]: { dark: string; light: string };
-  } = {
+// Helper function untuk mendapatkan warna status - diperbaiki sesuai enum di database
+const getStatusColor = (status: string | undefined, theme: string) => {
+  const statusColors: Record<string, { dark: string; light: string }> = {
     'Tersedia': {
       dark: "bg-green-800 text-green-100",
       light: "bg-green-100 text-green-800"
@@ -133,21 +114,31 @@ const getStatusColor = (status: string, theme: string) => {
       dark: "bg-yellow-800 text-yellow-100",
       light: "bg-yellow-100 text-yellow-800"
     },
-    'Diperbaiki': {
+    'Dalam Perbaikan': {
       dark: "bg-blue-800 text-blue-100",
       light: "bg-blue-100 text-blue-800"
     },
-    'Dihapuskan': {
+    'Rusak': {
       dark: "bg-red-800 text-red-100",
       light: "bg-red-100 text-red-800"
     },
-    'Default': {
+    'Hilang': {
+      dark: "bg-purple-800 text-purple-100",
+      light: "bg-purple-100 text-purple-800"
+    },
+    'Dihapuskan': {
       dark: "bg-gray-800 text-gray-100",
       light: "bg-gray-100 text-gray-800"
     }
+    ,
+    'Default': {
+      dark: "bg-gray-700 text-gray-100",
+      light: "bg-gray-100 text-gray-700"
+    }
   };
   
-  return (statusColors[status] || statusColors['Default'])[theme === "dark" ? 'dark' : 'light'];
+  const key = status && statusColors[status] ? status : 'Default';
+  return (statusColors[key])[theme === "dark" ? 'dark' : 'light'];
 };
 
 // Komponen untuk informasi utama aset
@@ -366,7 +357,49 @@ function AssetUnitKerja({ asset, theme }: { asset: AssetDetail; theme: string })
   );
 }
 
-// Komponen untuk dokumen terkait
+// Komponen untuk informasi group aset (ditambahkan)
+function AssetGroup({ asset, theme }: { asset: AssetDetail; theme: string }) {
+  if (!asset.group) return null;
+  
+  return (
+    <div className={`rounded-lg shadow-md p-6 ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
+      <h2 className={`text-xl font-semibold mb-4 ${getThemeClass(theme, "text-white", "text-gray-800")}`}>
+        Group Aset
+      </h2>
+      
+      <div className="space-y-4">
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Nama Group
+          </p>
+          <p className="text-base">
+            {asset.group.nama_group || 'N/A'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Kode Group
+          </p>
+          <p className="text-base">
+            {asset.group.kode_group || 'N/A'}
+          </p>
+        </div>
+        
+        <div>
+          <p className={`text-sm font-medium ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
+            Deskripsi
+          </p>
+          <p className="text-base">
+            {asset.group.deskripsi || '-'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Komponen untuk dokumen dan media terkait - diperbaiki sesuai database
 function AssetDocuments({ 
   asset, 
   theme, 
@@ -382,10 +415,19 @@ function AssetDocuments({
   documentError: string | null;
   onViewDocument: (e: React.MouseEvent) => void;
 }) {
+  // Konversi AssetDetail ke AssetData untuk QRCodeDisplay
+  const assetData: AssetData = {
+    id_aset: asset.id_aset,
+    kode_aset: asset.kode_aset,
+    merk: asset.merk || '',
+    tipe_model: asset.tipe_model || '',
+    file_qrcode: asset.file_qrcode || ''
+  };
+
   return (
     <div className={`rounded-lg shadow-md p-6 ${getThemeClass(theme, "bg-gray-800", "bg-white")}`}>
       <h2 className={`text-xl font-semibold mb-4 ${getThemeClass(theme, "text-white", "text-gray-800")}`}>
-        Dokumen Terkait
+        Dokumen & Media Terkait
       </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -396,7 +438,7 @@ function AssetDocuments({
           {asset.file_qrcode ? (
             <div className="flex flex-col items-start">
               <QRCodeDisplay 
-                asset={asset} 
+                asset={assetData} // Gunakan assetData yang sudah dikonversi
                 size={120} 
                 className="mb-3"
               />
@@ -417,9 +459,9 @@ function AssetDocuments({
         
         <div>
           <p className={`text-sm font-medium mb-2 ${getThemeClass(theme, "text-gray-400", "text-gray-500")}`}>
-            Dokumen Pengadaan
+            Foto Barang
           </p>
-          {asset.file_pengadaan ? (
+          {asset.foto_barang ? (
             <>
               <button
                 onClick={onViewDocument}
@@ -438,9 +480,9 @@ function AssetDocuments({
                 ) : (
                   <>
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    Lihat Dokumen
+                    Lihat Foto
                   </>
                 )}
               </button>
@@ -449,7 +491,7 @@ function AssetDocuments({
               )}
             </>
           ) : (
-            <p className="text-sm italic">Belum ada dokumen pengadaan</p>
+            <p className="text-sm italic">Belum ada foto barang</p>
           )}
         </div>
       </div>
@@ -501,7 +543,18 @@ export function AssetDetailPage() {
       
       const qrCodeUrl = `${backendUrl}${asset.file_qrcode}`;
       
-      const printHTML = generateQRPrintHTML(asset, qrCodeUrl);
+      // Build object matching QRPrintTemplate's expected fields
+      const assetForPrint = {
+        kode_aset: asset.kode_aset,
+        item: asset.item ? { nama_item: asset.item.nama_item } : undefined,
+        merk: asset.merk || '',
+        tipe_model: asset.tipe_model || '',
+        lokasi: asset.lokasi ? { nama_ruangan: asset.lokasi.nama_ruangan } : undefined,
+        status_aset: asset.status_aset,
+        file_qrcode: asset.file_qrcode ?? null,
+      };
+
+      const printHTML = generateQRPrintHTML(assetForPrint as any, qrCodeUrl);
       printWindow.document.write(printHTML);
       printWindow.document.close();
       
@@ -512,29 +565,29 @@ export function AssetDetailPage() {
     }
   }, [asset]);
 
-  // Handler untuk melihat dokumen
+  // Handler untuk melihat foto
   const handleViewDocument = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!asset?.file_pengadaan) return;
+    if (!asset?.foto_barang) return;
     
     setDocumentLoading(true);
     setDocumentError(null);
     
     try {
-      const response = await fetch(asset.file_pengadaan);
+      const response = await fetch(asset.foto_barang);
       if (!response.ok) {
-        throw new Error('Dokumen tidak dapat diakses');
+        throw new Error('Foto tidak dapat diakses');
       }
       
-      // Buka dokumen di tab baru
-      window.open(asset.file_pengadaan, '_blank');
+      // Buka foto di tab baru
+      window.open(asset.foto_barang, '_blank');
     } catch (err) {
       console.error('Error accessing document:', err);
-      setDocumentError('Gagal mengakses dokumen. Silakan coba lagi nanti.');
+      setDocumentError('Gagal mengakses foto. Silakan coba lagi nanti.');
     } finally {
       setDocumentLoading(false);
     }
-  }, [asset?.file_pengadaan]);
+  }, [asset?.foto_barang]);
 
   // Handler untuk hapus aset
   const handleDelete = useCallback(async () => {
@@ -706,6 +759,12 @@ export function AssetDetailPage() {
         <div>
           <AssetUnitKerja asset={asset} theme={theme} />
         </div>
+        
+        {asset.group && (
+          <div className="lg:col-span-3">
+            <AssetGroup asset={asset} theme={theme} />
+          </div>
+        )}
         
         <div className="lg:col-span-3">
           <AssetDocuments 

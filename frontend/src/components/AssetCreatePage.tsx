@@ -13,6 +13,8 @@ interface MasterItem {
   nama_item: string;
   kode_item: string;
   metode_pelacakan: string;
+  id_kategori?: number; // some responses include this
+  kategori?: { id_kategori: number; nama_kategori: string };
 }
 interface Kampus { 
   id_kampus: number; 
@@ -83,6 +85,9 @@ export function AssetCreatePage() {
   const [error, setError] = useState<string>('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [previewData, setPreviewData] = useState<any>(null);
+  // State untuk foto barang
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string>('');
 
   // State untuk QR Code preview
   const [qrCodePreview, setQrCodePreview] = useState<string>('');
@@ -91,6 +96,7 @@ export function AssetCreatePage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdAssetId, setCreatedAssetId] = useState<number | null>(null);
   const [createdAssetCount, setCreatedAssetCount] = useState<number>(0);
+  const [createdAssetPhotoUrl, setCreatedAssetPhotoUrl] = useState<string>('');
 
   // Opsi untuk react-select
   const [itemOptions, setItemOptions] = useState<SelectOption[]>([]);
@@ -153,27 +159,38 @@ export function AssetCreatePage() {
       setError('');
       try {
         // Menggunakan endpoint yang benar
-        const [itemRes, kampusRes] = await Promise.all([
-          api.get<MasterItem[]>('/master-data/master-item'),
-          api.get<Kampus[]>('/master-data/kampus'), // Menggunakan endpoint /master-data/kampus
+        // Fetch items, kampus and kategori in parallel
+        const [itemRes, kampusRes, kategoriRes] = await Promise.all([
+          api.get('/master-data/master-item'),
+          api.get('/master-data/kampus'), // Menggunakan endpoint /master-data/kampus
+          api.get('/master-data/kategori-item'),
         ]);
-        
+
+        // Normalize responses (some endpoints return { data: [...] })
+        const itemsData: any[] = itemRes.data?.data ?? itemRes.data ?? [];
+        const kampusData: any[] = kampusRes.data?.data ?? kampusRes.data ?? [];
+        const kategoriList: any[] = kategoriRes.data?.data ?? kategoriRes.data ?? [];
+
         // Filter hanya item dengan metode pelacakan Individual
-        const individualItems = itemRes.data.filter((item: MasterItem) => 
+        const individualItems = itemsData.filter((item: MasterItem) => 
           item.metode_pelacakan === 'Individual'
-        );
-        
+        ).map((it: any) => {
+          // Attach kategori object if available. Support multiple possible id field names.
+          const itemCategoryId = it.id_kategori ?? it.id_kategori_item ?? it.idKategori ?? null;
+          const kat = itemCategoryId != null ? kategoriList.find((k: any) => Number(k.id_kategori) === Number(itemCategoryId)) : undefined;
+          return { ...it, id_kategori: itemCategoryId, kategori: kat };
+        });
         setItems(individualItems);
-        setKampus(kampusRes.data);
+        setKampus(kampusData);
         
         // Format options untuk react-select
         setItemOptions(individualItems.map(item => ({
           value: item.id_item.toString(),
-          label: `${item.kode_item} - ${item.nama_item}`,
+          label: `${item.kode_item} - ${item.nama_item}${item.kategori ? ` (${item.kategori.nama_kategori})` : ''}`,
           data: item
         })));
         
-        setKampusOptions(kampusRes.data.map((k: Kampus) => ({
+        setKampusOptions(kampusData.map((k: Kampus) => ({
           value: k.id_kampus.toString(),
           label: `${k.kode_kampus} - ${k.nama_kampus}`,
           data: k
@@ -383,6 +400,40 @@ export function AssetCreatePage() {
     }
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+    // Revoke previous preview URL if any
+    if (photoPreviewUrl) {
+      try { URL.revokeObjectURL(photoPreviewUrl); } catch (err) {}
+    }
+
+    if (!file) {
+      setSelectedPhoto(null);
+      setPhotoPreviewUrl('');
+      return;
+    }
+
+  // Client-side validation: only images, max 50MB
+  const maxSize = 50 * 1024 * 1024; // 50MB
+    if (!file.type.startsWith('image/')) {
+      setSelectedPhoto(null);
+      setPhotoPreviewUrl('');
+      setError('Format file tidak didukung. Pilih file gambar (jpg/png/gif).');
+      return;
+    }
+    if (file.size > maxSize) {
+      setSelectedPhoto(null);
+      setPhotoPreviewUrl('');
+      setError('Ukuran file terlalu besar. Maksimal 5MB.');
+      return;
+    }
+
+    setError('');
+    setSelectedPhoto(file);
+    const url = URL.createObjectURL(file);
+    setPhotoPreviewUrl(url);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -418,6 +469,39 @@ export function AssetCreatePage() {
         jumlah: Number(formData.jumlah),
       });
 
+      // If a photo is selected, upload it first to get path
+      let fotoPath: string | undefined = undefined;
+      if (selectedPhoto) {
+        const form = new FormData();
+        form.append('file', selectedPhoto);
+        try {
+          const uploadRes = await api.post('/assets/upload', form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          // backend returns { message, url, filename }
+          // Prefer explicit url, fallback to filename
+          const returnedUrl = uploadRes.data?.url;
+          const returnedFilename = uploadRes.data?.filename;
+          if (returnedUrl && typeof returnedUrl === 'string') {
+            fotoPath = returnedUrl;
+          } else if (returnedFilename && typeof returnedFilename === 'string') {
+            fotoPath = `/uploads/foto-barang/${returnedFilename}`;
+          } else {
+            fotoPath = undefined;
+          }
+          // Convert to absolute URL for frontend image rendering
+          if (fotoPath && fotoPath.startsWith('/')) {
+            const base = api.defaults.baseURL || '';
+            fotoPath = `${base}${fotoPath}`;
+          }
+        } catch (err) {
+          console.error('Gagal upload foto:', err);
+          setError('Gagal mengunggah foto. Silakan coba lagi.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const response = await api.post('/assets', {
         ...formData,
         id_item: Number(formData.id_item),
@@ -427,16 +511,25 @@ export function AssetCreatePage() {
         id_unit_kerja: Number(formData.id_unit_kerja),
         id_group: formData.id_group ? Number(formData.id_group) : null,
         jumlah: Number(formData.jumlah),
+        foto_barang: fotoPath,
       });
 
       console.log('Response dari server:', response.data);
       
-      // Ambil ID aset pertama dari response
-      const firstAssetId = response.data.data[0].id_aset;
+  // Ambil ID aset pertama dari response
+  const firstAsset = response.data.data && response.data.data[0] ? response.data.data[0] : null;
+  const firstAssetId = firstAsset ? firstAsset.id_aset : null;
+      let fotoPathFromResponse = firstAsset?.foto_barang || '';
+      // Convert response foto path to absolute URL if it's relative
+      if (fotoPathFromResponse && fotoPathFromResponse.startsWith('/')) {
+        const base = api.defaults.baseURL || '';
+        fotoPathFromResponse = `${base}${fotoPathFromResponse}`;
+      }
       
-      // Simpan ID aset dan jumlah untuk ditampilkan di modal sukses
-      setCreatedAssetId(firstAssetId);
-      setCreatedAssetCount(Number(formData.jumlah));
+  // Simpan ID aset, jumlah, and foto untuk ditampilkan di modal sukses
+  if (firstAssetId) setCreatedAssetId(firstAssetId);
+  setCreatedAssetCount(Number(formData.jumlah));
+  setCreatedAssetPhotoUrl(fotoPathFromResponse || '');
       
       // Tampilkan modal sukses
       setShowSuccessModal(true);
@@ -508,6 +601,9 @@ export function AssetCreatePage() {
     });
     setPreviewData(null);
     setQrCodePreview('');
+    if (photoPreviewUrl) {
+      try { URL.revokeObjectURL(photoPreviewUrl); } catch (err) {}
+    }
     setShowSuccessModal(false);
   };
 
@@ -818,6 +914,29 @@ export function AssetCreatePage() {
                   placeholder="Deskripsi detail spesifikasi aset..."
                 ></textarea>
               </div>
+
+              {/* Photo upload */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}>
+                  Foto Barang (opsional)
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="block"
+                  />
+                  {photoPreviewUrl && (
+                    <img src={photoPreviewUrl} alt="Preview foto" className="h-20 w-20 object-cover rounded border" />
+                  )}
+                </div>
+                <p className={`mt-1 text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                  Maks 50MB. Format: jpg, jpeg, png, gif.
+                </p>
+              </div>
             </div>
 
             {/* --- Informasi Pengadaan --- */}
@@ -1044,13 +1163,18 @@ export function AssetCreatePage() {
                         Preview QR Code:
                       </div>
                       <div className="flex justify-center">
-                        {qrCodePreview && (
-                          <QRCodeGenerator 
-                            value={qrCodePreview} 
-                            size={150}
-                            className="p-2 bg-white rounded-lg shadow-sm"
-                          />
-                        )}
+                          <div className="space-y-2">
+                            {photoPreviewUrl && (
+                              <img src={photoPreviewUrl} alt="Preview foto" className="h-28 w-28 object-cover rounded shadow-sm mx-auto" />
+                            )}
+                            {qrCodePreview && (
+                              <QRCodeGenerator 
+                                value={qrCodePreview} 
+                                size={150}
+                                className="p-2 bg-white rounded-lg shadow-sm"
+                              />
+                            )}
+                          </div>
                       </div>
                     </div>
                   </div>
@@ -1129,6 +1253,12 @@ export function AssetCreatePage() {
                 <p className="mt-1">
                   QR Code telah dibuat secara otomatis untuk setiap aset.
                 </p>
+                {createdAssetPhotoUrl && (
+                  <div className="mt-4">
+                    <div className="text-sm mb-1">Foto Barang:</div>
+                    <img src={createdAssetPhotoUrl} alt="Foto aset" className="mx-auto h-28 w-28 object-cover rounded" />
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-center space-x-3">

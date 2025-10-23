@@ -1,16 +1,12 @@
-// backend/src/auth/dto/change-password.dto.ts
 import { IsString, IsNotEmpty, MinLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
 
 export class ChangePasswordDto {
-  @ApiProperty()
   @IsString()
   @IsNotEmpty()
   password_lama: string;
 
-  @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(8, { message: 'Password baru minimal harus 8 karakter' })
   password_baru: string;
 }

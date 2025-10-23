@@ -6,11 +6,11 @@ export function Footer() {
 
   return (
     <footer
-      className={`p-4 border-t transition-colors duration-300 ${
+      className={`p-4 border-t transition-all duration-300 ${
         theme === "dark"
           ? "bg-gradient-to-r from-gray-800 to-gray-900 border-gray-700"
           : "bg-gradient-to-r from-blue-900 to-blue-800 border-blue-600"
-      }`}
+      } backdrop-blur-sm bg-opacity-90`}
     >
       <div className="text-center">
         <p

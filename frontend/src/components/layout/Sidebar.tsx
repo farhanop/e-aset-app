@@ -24,7 +24,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  // Mengambil state sidebar dari localStorage saat komponen dimuat
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const savedState = localStorage.getItem("sidebarCollapsed");
     return savedState ? JSON.parse(savedState) : false;
@@ -35,12 +34,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const { theme } = useTheme();
 
-  // Menyimpan state sidebar ke localStorage setiap kali berubah
   useEffect(() => {
     localStorage.setItem("sidebarCollapsed", JSON.stringify(isCollapsed));
   }, [isCollapsed]);
 
-  // Tutup dropdown saat sidebar di-collapse
   useEffect(() => {
     if (isCollapsed) {
       setIsSettingsOpen(false);
@@ -52,7 +49,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   };
 
   const toggleSettingsDropdown = () => {
-    // Hanya toggle jika sidebar tidak dalam keadaan collapsed
     if (!isCollapsed) {
       setIsSettingsOpen(!isSettingsOpen);
     }
@@ -71,9 +67,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/parameters", icon: <FaSlidersH />, label: "Manajemen Parameter" },
   ];
 
+  // Fungsi untuk memeriksa apakah menu aktif
+  const isActive = (path: string) => {
+    if (path === "/dashboard") {
+      return location.pathname === path;
+    }
+    return location.pathname.startsWith(path);
+  };
+
   return (
     <>
-      {/* Sidebar untuk desktop - selalu terlihat */}
+      {/* Sidebar untuk desktop */}
       <div
         className={`hidden md:flex relative h-full transition-all duration-500 ease-in-out ${
           isCollapsed ? "w-20" : "w-64"
@@ -81,7 +85,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Background dengan tema dark/light */}
+        {/* Background */}
         <div
           className={`absolute inset-0 rounded-r-2xl shadow-2xl transition-colors duration-300 ${
             theme === "dark"
@@ -99,15 +103,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           }`}
         ></div>
 
-        {/* Layer untuk Highlight */}
-        <div
-          className={`absolute inset-0 rounded-r-2xl transition-colors duration-300 ${
-            theme === "dark"
-              ? "bg-gradient-to-b from-gray-400/10 via-transparent to-gray-500/10"
-              : "bg-gradient-to-b from-blue-400/10 via-transparent to-blue-500/10"
-          }`}
-        ></div>
-
         {/* Main Content */}
         <div className="relative z-10 flex flex-col h-full">
           {/* Header */}
@@ -118,10 +113,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           >
             <div className="flex items-center justify-center space-x-3">
               <div
-                className={`p-2 rounded-xl backdrop-blur-sm border transition-colors duration-300 ${
+                className={`p-2 rounded-xl backdrop-blur-sm border transition-all duration-300 ${
                   theme === "dark"
-                    ? "bg-white/10 border-gray-600"
-                    : "bg-white/10 border-blue-400/20"
+                    ? "bg-white/10 border-gray-600 hover:bg-white/20"
+                    : "bg-white/10 border-blue-400/20 hover:bg-white/20"
                 }`}
               >
                 <img 
@@ -147,29 +142,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
 
           {/* Navigation Menu */}
-          <nav className="flex-1 mt-4 px-2 space-y-1">
+          <nav className="flex-1 mt-4 px-2 space-y-1 overflow-y-auto">
             {menuItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 className={`
                   group relative flex items-center p-3 my-1 rounded-xl
-                  transition-all duration-300 ease-out
-                  ${
-                    location.pathname.startsWith(item.path) && item.path !== "/"
-                      ? theme === "dark"
-                        ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
-                        : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
-                      : theme === "dark"
-                      ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
-                      : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
+                  transition-all duration-300 ease-out overflow-hidden
+                  ${isActive(item.path)
+                    ? theme === "dark"
+                      ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
+                      : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
+                    : theme === "dark"
+                    ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
+                    : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
                   }
                   hover:scale-105 hover:shadow-xl
-                  overflow-hidden
                 `}
               >
                 {/* Active Indicator */}
-                {location.pathname.startsWith(item.path) && item.path !== "/" && (
+                {isActive(item.path) && (
                   <div
                     className={`absolute inset-0 bg-gradient-to-r from-white/10 to-transparent transition-colors duration-300 ${
                       theme === "dark" ? "from-white/5" : "from-white/10"
@@ -181,12 +174,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <span
                   className={`
                   text-lg transition-all duration-300
-                  ${
-                    location.pathname.startsWith(item.path) && item.path !== "/"
-                      ? "text-yellow-300"
-                      : theme === "dark"
-                      ? "text-gray-300"
-                      : "text-blue-200"
+                  ${isActive(item.path)
+                    ? "text-yellow-300"
+                    : theme === "dark"
+                    ? "text-gray-300"
+                    : "text-blue-200"
                   }
                   group-hover:text-white
                   ${isCollapsed ? "mx-auto" : ""}
@@ -200,12 +192,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <span
                     className={`
                     ml-3 font-medium transition-all duration-300
-                    ${
-                      location.pathname.startsWith(item.path) && item.path !== "/"
-                        ? "text-white"
-                        : theme === "dark"
-                        ? "text-gray-300"
-                        : "text-blue-100"
+                    ${isActive(item.path)
+                      ? "text-white"
+                      : theme === "dark"
+                      ? "text-gray-300"
+                      : "text-blue-100"
                     }
                     group-hover:text-white
                   `}
@@ -224,15 +215,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               className={`
                 group relative flex flex-col rounded-xl
                 transition-all duration-300 ease-out
-                ${
-                  isSettingsOpen || 
-                  settingsItems.some(item => location.pathname.startsWith(item.path))
-                    ? theme === "dark"
-                      ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
-                      : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
-                    : theme === "dark"
-                    ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
-                    : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
+                ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
+                  ? theme === "dark"
+                    ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
+                    : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
+                  : theme === "dark"
+                  ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
+                  : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
                 }
                 overflow-hidden
               `}
@@ -244,12 +233,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   flex items-center p-3 my-1 cursor-pointer
                   hover:scale-105 hover:shadow-xl
                   transition-all duration-300 ease-out
-                  ${isCollapsed ? "pointer-events-none" : ""} // Nonaktifkan klik saat collapsed
+                  ${isCollapsed ? "pointer-events-none" : ""}
                 `}
               >
                 {/* Active Indicator */}
-                {(isSettingsOpen || 
-                  settingsItems.some(item => location.pathname.startsWith(item.path))) && (
+                {(isSettingsOpen || settingsItems.some(item => isActive(item.path))) && (
                   <div
                     className={`absolute inset-0 bg-gradient-to-r from-white/10 to-transparent transition-colors duration-300 ${
                       theme === "dark" ? "from-white/5" : "from-white/10"
@@ -261,13 +249,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <span
                   className={`
                   text-lg transition-all duration-300
-                  ${
-                    isSettingsOpen || 
-                    settingsItems.some(item => location.pathname.startsWith(item.path))
-                      ? "text-yellow-300"
-                      : theme === "dark"
-                      ? "text-gray-300"
-                      : "text-blue-200"
+                  ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
+                    ? "text-yellow-300"
+                    : theme === "dark"
+                    ? "text-gray-300"
+                    : "text-blue-200"
                   }
                   group-hover:text-white
                   ${isCollapsed ? "mx-auto" : ""}
@@ -282,20 +268,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <span
                       className={`
                       ml-3 font-medium transition-all duration-300
-                      ${
-                        isSettingsOpen || 
-                        settingsItems.some(item => location.pathname.startsWith(item.path))
-                          ? "text-white"
-                          : theme === "dark"
-                          ? "text-gray-300"
-                          : "text-blue-100"
+                      ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
+                        ? "text-white"
+                        : theme === "dark"
+                        ? "text-gray-300"
+                        : "text-blue-100"
                       }
                       group-hover:text-white
                     `}
                     >
                       Pengaturan
                     </span>
-                    <span className="ml-auto">
+                    <span className="ml-auto transition-transform duration-300">
                       {isSettingsOpen ? <FaAngleUp /> : <FaAngleDown />}
                     </span>
                   </>
@@ -315,14 +299,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       className={`
                         group relative flex items-center p-2 my-1 rounded-lg
                         transition-all duration-300 ease-out
-                        ${
-                          location.pathname.startsWith(item.path)
-                            ? theme === "dark"
-                              ? "bg-gray-600/50 shadow-inner border-l-2 border-yellow-400"
-                              : "bg-blue-600/50 shadow-inner border-l-2 border-yellow-400"
-                            : theme === "dark"
-                            ? "bg-gray-700/30 hover:bg-gray-600/50"
-                            : "bg-blue-700/30 hover:bg-blue-600/50"
+                        ${isActive(item.path)
+                          ? theme === "dark"
+                            ? "bg-gray-600/50 shadow-inner border-l-2 border-yellow-400"
+                            : "bg-blue-600/50 shadow-inner border-l-2 border-yellow-400"
+                          : theme === "dark"
+                          ? "bg-gray-700/30 hover:bg-gray-600/50"
+                          : "bg-blue-700/30 hover:bg-blue-600/50"
                         }
                         hover:scale-105
                         overflow-hidden
@@ -332,12 +315,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span
                         className={`
                         text-sm transition-all duration-300
-                        ${
-                          location.pathname.startsWith(item.path)
-                            ? "text-yellow-300"
-                            : theme === "dark"
-                            ? "text-gray-300"
-                            : "text-blue-200"
+                        ${isActive(item.path)
+                          ? "text-yellow-300"
+                          : theme === "dark"
+                          ? "text-gray-300"
+                          : "text-blue-200"
                         }
                         group-hover:text-white
                       `}
@@ -349,12 +331,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span
                         className={`
                         ml-3 text-sm font-medium transition-all duration-300
-                        ${
-                          location.pathname.startsWith(item.path)
-                            ? "text-white"
-                            : theme === "dark"
-                            ? "text-gray-300"
-                            : "text-blue-100"
+                        ${isActive(item.path)
+                          ? "text-white"
+                          : theme === "dark"
+                          ? "text-gray-300"
+                          : "text-blue-100"
                         }
                         group-hover:text-white
                       `}
@@ -398,7 +379,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         </div>
 
-        {/* 3D Toggle Button */}
+        {/* Toggle Button */}
         <button
           onClick={toggleSidebar}
           onMouseEnter={() => setIsHovered(true)}
@@ -420,21 +401,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 : "bg-gradient-to-b from-blue-700 to-blue-600"
             }`}
           ></div>
-          <div
-            className={`absolute inset-0 rounded-lg opacity-60 transition-colors duration-300 ${
-              theme === "dark"
-                ? "bg-gradient-to-b from-gray-500 to-gray-400"
-                : "bg-gradient-to-b from-blue-500 to-blue-400"
-            }`}
-          ></div>
-          <div
-            className={`absolute inset-0 rounded-lg opacity-30 transition-colors duration-300 ${
-              theme === "dark"
-                ? "bg-gradient-to-b from-gray-300 to-gray-200"
-                : "bg-gradient-to-b from-blue-300 to-blue-200"
-            }`}
-          ></div>
-
+          
           {/* Icon */}
           <div className="relative z-10 transform transition-transform duration-500 group-hover:scale-125">
             {isCollapsed ? (
@@ -446,9 +413,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {/* Hover Effect */}
           <div className="absolute inset-0 bg-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-          {/* Shine Effect */}
-          <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-lg"></div>
         </button>
 
         {/* Animated Border Effect */}
@@ -477,30 +441,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 isCollapsed ? "w-20" : "w-64"
               }`}
             >
-              {/* Background dengan tema dark/light */}
+              {/* Background */}
               <div
                 className={`absolute inset-0 rounded-r-2xl shadow-2xl transition-colors duration-300 ${
                   theme === "dark"
                     ? "bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900"
                     : "bg-gradient-to-b from-blue-900 via-blue-800 to-blue-900"
-                }`}
-              ></div>
-
-              {/* Layer untuk Depth */}
-              <div
-                className={`absolute inset-0 rounded-r-2xl transition-colors duration-300 ${
-                  theme === "dark"
-                    ? "bg-gradient-to-r from-gray-700/30 to-gray-600/20"
-                    : "bg-gradient-to-r from-blue-700/30 to-blue-600/20"
-                }`}
-              ></div>
-
-              {/* Layer untuk Highlight */}
-              <div
-                className={`absolute inset-0 rounded-r-2xl transition-colors duration-300 ${
-                  theme === "dark"
-                    ? "bg-gradient-to-b from-gray-400/10 via-transparent to-gray-500/10"
-                    : "bg-gradient-to-b from-blue-400/10 via-transparent to-blue-500/10"
                 }`}
               ></div>
 
@@ -544,7 +490,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   {/* Tombol close untuk mobile */}
                   <button
                     onClick={onClose}
-                    className={`p-2 rounded-full ${
+                    className={`p-2 rounded-full transition-colors duration-300 ${
                       theme === "dark"
                         ? "text-gray-300 hover:bg-gray-700"
                         : "text-blue-200 hover:bg-blue-700"
@@ -560,25 +506,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <Link
                       key={item.path}
                       to={item.path}
-                      onClick={onClose} // Tutup sidebar setelah navigasi
+                      onClick={onClose}
                       className={`
                         group relative flex items-center p-3 my-1 rounded-xl
-                        transition-all duration-300 ease-out
-                        ${
-                          location.pathname.startsWith(item.path) && item.path !== "/"
-                            ? theme === "dark"
-                              ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
-                              : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
-                            : theme === "dark"
-                            ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
-                            : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
+                        transition-all duration-300 ease-out overflow-hidden
+                        ${isActive(item.path)
+                          ? theme === "dark"
+                            ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
+                            : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
+                          : theme === "dark"
+                          ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
+                          : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
                         }
                         hover:scale-105 hover:shadow-xl
-                        overflow-hidden
                       `}
                     >
                       {/* Active Indicator */}
-                      {location.pathname.startsWith(item.path) && item.path !== "/" && (
+                      {isActive(item.path) && (
                         <div
                           className={`absolute inset-0 bg-gradient-to-r from-white/10 to-transparent transition-colors duration-300 ${
                             theme === "dark" ? "from-white/5" : "from-white/10"
@@ -590,12 +534,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span
                         className={`
                         text-lg transition-all duration-300
-                        ${
-                          location.pathname.startsWith(item.path) && item.path !== "/"
-                            ? "text-yellow-300"
-                            : theme === "dark"
-                            ? "text-gray-300"
-                            : "text-blue-200"
+                        ${isActive(item.path)
+                          ? "text-yellow-300"
+                          : theme === "dark"
+                          ? "text-gray-300"
+                          : "text-blue-200"
                         }
                         group-hover:text-white
                         ${isCollapsed ? "mx-auto" : ""}
@@ -609,12 +552,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <span
                           className={`
                           ml-3 font-medium transition-all duration-300
-                          ${
-                            location.pathname.startsWith(item.path) && item.path !== "/"
-                              ? "text-white"
-                              : theme === "dark"
-                              ? "text-gray-300"
-                              : "text-blue-100"
+                          ${isActive(item.path)
+                            ? "text-white"
+                            : theme === "dark"
+                            ? "text-gray-300"
+                            : "text-blue-100"
                           }
                           group-hover:text-white
                         `}
@@ -633,15 +575,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className={`
                       group relative flex flex-col rounded-xl
                       transition-all duration-300 ease-out
-                      ${
-                        isSettingsOpen || 
-                        settingsItems.some(item => location.pathname.startsWith(item.path))
-                          ? theme === "dark"
-                            ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
-                            : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
-                          : theme === "dark"
-                          ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
-                          : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
+                      ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
+                        ? theme === "dark"
+                          ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
+                          : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
+                        : theme === "dark"
+                        ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
+                        : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
                       }
                       overflow-hidden
                     `}
@@ -653,12 +593,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         flex items-center p-3 my-1 cursor-pointer
                         hover:scale-105 hover:shadow-xl
                         transition-all duration-300 ease-out
-                        ${isCollapsed ? "pointer-events-none" : ""} // Nonaktifkan klik saat collapsed
+                        ${isCollapsed ? "pointer-events-none" : ""}
                       `}
                     >
                       {/* Active Indicator */}
-                      {(isSettingsOpen || 
-                        settingsItems.some(item => location.pathname.startsWith(item.path))) && (
+                      {(isSettingsOpen || settingsItems.some(item => isActive(item.path))) && (
                         <div
                           className={`absolute inset-0 bg-gradient-to-r from-white/10 to-transparent transition-colors duration-300 ${
                             theme === "dark" ? "from-white/5" : "from-white/10"
@@ -670,13 +609,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span
                         className={`
                         text-lg transition-all duration-300
-                        ${
-                          isSettingsOpen || 
-                          settingsItems.some(item => location.pathname.startsWith(item.path))
-                            ? "text-yellow-300"
-                            : theme === "dark"
-                            ? "text-gray-300"
-                            : "text-blue-200"
+                        ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
+                          ? "text-yellow-300"
+                          : theme === "dark"
+                          ? "text-gray-300"
+                          : "text-blue-200"
                         }
                         group-hover:text-white
                         ${isCollapsed ? "mx-auto" : ""}
@@ -691,20 +628,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                           <span
                             className={`
                             ml-3 font-medium transition-all duration-300
-                            ${
-                              isSettingsOpen || 
-                              settingsItems.some(item => location.pathname.startsWith(item.path))
-                                ? "text-white"
-                                : theme === "dark"
-                                ? "text-gray-300"
-                                : "text-blue-100"
+                            ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
+                              ? "text-white"
+                              : theme === "dark"
+                              ? "text-gray-300"
+                              : "text-blue-100"
                             }
                             group-hover:text-white
                           `}
                           >
                             Pengaturan
                           </span>
-                          <span className="ml-auto">
+                          <span className="ml-auto transition-transform duration-300">
                             {isSettingsOpen ? <FaAngleUp /> : <FaAngleDown />}
                           </span>
                         </>
@@ -721,18 +656,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                           <Link
                             key={item.path}
                             to={item.path}
-                            onClick={onClose} // Tutup sidebar setelah navigasi
+                            onClick={onClose}
                             className={`
                               group relative flex items-center p-2 my-1 rounded-lg
                               transition-all duration-300 ease-out
-                              ${
-                                location.pathname.startsWith(item.path)
-                                  ? theme === "dark"
-                                    ? "bg-gray-600/50 shadow-inner border-l-2 border-yellow-400"
-                                    : "bg-blue-600/50 shadow-inner border-l-2 border-yellow-400"
-                                  : theme === "dark"
-                                  ? "bg-gray-700/30 hover:bg-gray-600/50"
-                                  : "bg-blue-700/30 hover:bg-blue-600/50"
+                              ${isActive(item.path)
+                                ? theme === "dark"
+                                  ? "bg-gray-600/50 shadow-inner border-l-2 border-yellow-400"
+                                  : "bg-blue-600/50 shadow-inner border-l-2 border-yellow-400"
+                                : theme === "dark"
+                                ? "bg-gray-700/30 hover:bg-gray-600/50"
+                                : "bg-blue-700/30 hover:bg-blue-600/50"
                               }
                               hover:scale-105
                               overflow-hidden
@@ -742,12 +676,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <span
                               className={`
                               text-sm transition-all duration-300
-                              ${
-                                location.pathname.startsWith(item.path)
-                                  ? "text-yellow-300"
-                                  : theme === "dark"
-                                  ? "text-gray-300"
-                                  : "text-blue-200"
+                              ${isActive(item.path)
+                                ? "text-yellow-300"
+                                : theme === "dark"
+                                ? "text-gray-300"
+                                : "text-blue-200"
                               }
                               group-hover:text-white
                             `}
@@ -759,12 +692,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <span
                               className={`
                               ml-3 text-sm font-medium transition-all duration-300
-                              ${
-                                location.pathname.startsWith(item.path)
-                                  ? "text-white"
-                                  : theme === "dark"
-                                  ? "text-gray-300"
-                                  : "text-blue-100"
+                              ${isActive(item.path)
+                                ? "text-white"
+                                : theme === "dark"
+                                ? "text-gray-300"
+                                : "text-blue-100"
                               }
                               group-hover:text-white
                             `}

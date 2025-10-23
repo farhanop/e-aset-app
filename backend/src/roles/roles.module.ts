@@ -1,4 +1,4 @@
-// backend/src/roles/roles.module.ts
+// src/roles/roles.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RolesService } from './roles.service';
@@ -8,9 +8,11 @@ import { Permission } from './entities/permission.entity';
 import { User } from '../users/user.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Role, Permission, User])],
+  imports: [
+    TypeOrmModule.forFeature([Role, Permission, User]), // Registrasi entity ke TypeORM
+  ],
   controllers: [RolesController],
   providers: [RolesService],
-  exports: [RolesService],
+  exports: [RolesService, TypeOrmModule], // ⬅️ Tambahan penting bila dipakai modul lain (misal: MasterDataModule)
 })
 export class RolesModule {}

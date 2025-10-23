@@ -1,4 +1,3 @@
-// backend/src/users/users.service.ts
 import {
   Injectable,
   ConflictException,
@@ -12,8 +11,6 @@ import { Role } from '../roles/entities/role.entity';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { join } from 'path';
-import { existsSync, unlinkSync } from 'fs';
 
 @Injectable()
 export class UsersService {
@@ -159,7 +156,7 @@ export class UsersService {
   async findOneByIdWithPassword(id: number): Promise<User | undefined> {
     const user = await this.usersRepository.findOne({
       where: { id_user: id },
-      select: ['id_user', 'username', 'password', 'foto_profil'], // Pilih kolom spesifik
+      select: ['id_user', 'username', 'password'], // Pilih kolom spesifik
     });
     
     return user || undefined;
@@ -191,13 +188,10 @@ export class UsersService {
    */
   async update(
     id: number,
-    updateUserDto: Partial<UpdateUserDto> | { 
-      password?: string; 
-      foto_profil?: string | null;
-    },
+    updateUserDto: Partial<UpdateUserDto> | { password?: string },
   ): Promise<Omit<User, 'password'>> {
     // 'Partial<UpdateUserDto>' akan menangani update profil
-    // '{ password?: string; foto_profil?: string | null }' akan menangani ganti password dan foto profil
+    // '{ password?: string }' akan menangani ganti password
     
     const user = await this.findOneById(id);
     if (!user) {
@@ -230,14 +224,6 @@ export class UsersService {
       updateUserDto.password = await this.hashPassword(updateUserDto.password);
     }
     
-    // Jika ada perubahan foto profil, hapus foto lama jika ada
-    if ('foto_profil' in updateUserDto && user.foto_profil) {
-      const oldPhotoPath = join(process.cwd(), user.foto_profil);
-      if (existsSync(oldPhotoPath)) {
-        unlinkSync(oldPhotoPath);
-      }
-    }
-    
     // Gabungkan data lama dengan data baru
     Object.assign(user, updateUserDto);
     
@@ -259,14 +245,6 @@ export class UsersService {
     
     if (!user) {
       throw new NotFoundException(`User dengan ID ${id} tidak ditemukan`);
-    }
-
-    // Hapus foto profil jika ada
-    if (user.foto_profil) {
-      const photoPath = join(process.cwd(), user.foto_profil);
-      if (existsSync(photoPath)) {
-        unlinkSync(photoPath);
-      }
     }
 
     // Hapus relasi user-roles terlebih dahulu

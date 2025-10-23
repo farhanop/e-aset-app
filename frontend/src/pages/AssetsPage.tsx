@@ -1,4 +1,3 @@
-// src/pages/AssetsPage.tsx
 import { useState, useEffect,} from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
@@ -6,31 +5,57 @@ import { useTheme } from "../contexts/ThemeContext";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { Modal } from "../components/Modal";
+import { generateQRCardHTML, QR_CARD_STYLE } from '../components/qr/QRPrintTemplate';
 
 // Tipe data untuk Aset
 interface Asset {
   id_aset: number;
   kode_aset: string;
   item: { nama_item: string };
-  Kampus: { nama_kampus: string };
-  lokasi: { nama_ruangan: string };
-  status_aset: string;
-  kondisi_terakhir: string;
+  Kampus?: { nama_kampus: string };
+  gedung?: { nama_gedung: string };
+  lokasi: { nama_ruangan: string; lantai?: number; id_kampus?: number; gedung?: { nama_gedung?: string; id_kampus?: number; kampus?: { nama_kampus?: string } } };
+  status_aset?: string;
+  kondisi_terakhir?: string;
 }
 
 // --- KOMPONEN SKELETON LOADING ---
-const TableSkeleton = () => (
-  <div className={`p-6 rounded-lg shadow-md ${
-    document.documentElement.classList.contains('dark') ? 'bg-gray-800' : 'bg-white'
-  }`}>
-    <Skeleton height={40} className="mb-4" />
-    {Array(5)
-      .fill(0)
-      .map((_, index) => (
-        <Skeleton key={index} height={35} className="mb-2" />
-      ))}
-  </div>
-);
+const TableSkeleton = () => {
+  const { theme } = useTheme();
+  
+  return (
+    <div className={`p-6 rounded-xl shadow-lg ${
+      theme === "dark" ? "bg-gray-800" : "bg-white"
+    }`}>
+      <div className="flex justify-between items-center mb-6">
+        <Skeleton 
+          height={40} 
+          width={200} 
+          baseColor={theme === "dark" ? "#374151" : "#f3f4f6"}
+          highlightColor={theme === "dark" ? "#4b5563" : "#e5e7eb"}
+        />
+        <Skeleton 
+          height={40} 
+          width={120} 
+          baseColor={theme === "dark" ? "#374151" : "#f3f4f6"}
+          highlightColor={theme === "dark" ? "#4b5563" : "#e5e7eb"}
+        />
+      </div>
+      {Array(5)
+        .fill(0)
+        .map((_, index) => (
+          <div key={index} className="mb-3">
+            <Skeleton 
+              height={60} 
+              className="rounded-lg" 
+              baseColor={theme === "dark" ? "#374151" : "#f3f4f6"}
+              highlightColor={theme === "dark" ? "#4b5563" : "#e5e7eb"}
+            />
+          </div>
+        ))}
+    </div>
+  );
+};
 
 export function AssetsPage() {
   const { theme } = useTheme();
@@ -44,6 +69,9 @@ export function AssetsPage() {
   const [filterLokasi, setFilterLokasi] = useState('');
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState('');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
 
@@ -74,14 +102,15 @@ export function AssetsPage() {
     }
   };
 
+  // Fetch assets on mount
   useEffect(() => {
     fetchAssets();
   }, []);
-  
+
   // Efek untuk memfilter data
   useEffect(() => {
     let result = allAssets;
-    
+
     // Filter berdasarkan search term
     if (searchTerm) {
       result = result.filter(asset =>
@@ -90,21 +119,21 @@ export function AssetsPage() {
         (asset.lokasi?.nama_ruangan?.toLowerCase() || '').includes(searchTerm.toLowerCase())
       );
     }
-    
+
     // Filter berdasarkan nama barang
     if (filterNamaBarang) {
       result = result.filter(asset =>
         asset.item?.nama_item === filterNamaBarang
       );
     }
-    
+
     // Filter berdasarkan lokasi
     if (filterLokasi) {
       result = result.filter(asset =>
         asset.lokasi?.nama_ruangan === filterLokasi
       );
     }
-    
+
     setFilteredAssets(result);
     setCurrentPage(1);
   }, [searchTerm, allAssets, filterNamaBarang, filterLokasi]);
@@ -176,12 +205,16 @@ export function AssetsPage() {
               <td>${asset.lokasi?.nama_ruangan || 'N/A'}</td>
             </tr>
             <tr>
-              <th>Status</th>
-              <td>${asset.status_aset}</td>
+              <th>Lokasi Kampus</th>
+              <td>${asset.lokasi?.id_kampus ? `ID:${asset.lokasi.id_kampus}` : 'N/A'}</td>
             </tr>
             <tr>
-              <th>Kondisi</th>
-              <td>${asset.kondisi_terakhir || '-'}</td>
+              <th>Gedung</th>
+              <td>${asset.lokasi?.gedung?.nama_gedung ?? asset.gedung?.nama_gedung ?? 'N/A'}</td>
+            </tr>
+            <tr>
+              <th>Lantai</th>
+              <td>${asset.lokasi?.lantai ?? '-'}</td>
             </tr>
           </table>
         </div>
@@ -210,7 +243,10 @@ export function AssetsPage() {
         <tr>
           <td>${asset.kode_aset}</td>
           <td>${asset.item?.nama_item || 'N/A'}</td>
-          <td>${asset.lokasi?.nama_ruangan || 'N/A'}</td>
+          <td>${asset.lokasi?.id_kampus ? `ID:${asset.lokasi.id_kampus}` : 'N/A'}</td>
+          <td>${asset.lokasi?.gedung?.nama_gedung ?? asset.gedung?.nama_gedung ?? 'N/A'}</td>
+          <td>${asset.lokasi?.lantai ?? '-'}</td>
+          <td><div class="qr-placeholder">QR</div></td>
         </tr>
       `).join('');
     
@@ -239,7 +275,9 @@ export function AssetsPage() {
             <tr>
               <th>Kode Aset</th>
               <th>Nama Barang</th>
-              <th>Lokasi</th>
+              <th>Kampus</th>
+              <th>Gedung</th>
+              <th>Lantai</th>
               <th>QR Code</th>
             </tr>
           </thead>
@@ -289,6 +327,123 @@ export function AssetsPage() {
     }
   };
 
+  // Selection helpers
+  const toggleItem = (id: number) => {
+    setSelectedIds(prev => {
+      if (prev.includes(id)) return prev.filter(x => x !== id);
+      return [...prev, id];
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectAll) {
+      setSelectedIds([]);
+      setSelectAll(false);
+      return;
+    }
+
+    // Select all filtered assets (not just current page)
+    const allIds = filteredAssets.map(a => a.id_aset);
+    setSelectedIds(allIds);
+    setSelectAll(true);
+  };
+
+  const chunk = <T,>(arr: T[], size: number): T[][] => {
+    const chunks: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) {
+      chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+  };
+
+  // Build simple printable HTML for a page of assets using a compact QR card layout
+  const buildPrintWindowForPages = (pages: Asset[][]) => {
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    const pageHtml = pages.map(page => {
+      const cards = page.map(asset => {
+        // prefer file_qrcode if present, otherwise card will render a placeholder
+        const cardInner = generateQRCardHTML(asset as any, (asset as any).file_qrcode || null);
+        return `<div class="asset-card">${cardInner}</div>`;
+      }).join('\n');
+
+      return `<div class="page">${cards}</div>`;
+    }).join('\n');
+
+    // Basic styles to arrange asset cards per page
+    const doc = `
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Cetak QR</title>
+        <style>
+          ${QR_CARD_STYLE}
+          /* layout helpers for multi-card pages */
+          body{margin:6mm;background:white}
+          .page{display:flex;flex-wrap:wrap;gap:6mm;page-break-after:always}
+          .asset-card{width:90mm;height:50mm;box-sizing:border-box}
+          @media print{ .page{page-break-after:always} .no-print{display:none} }
+        </style>
+        <!-- QR runtime: QRious to generate QR images for assets without file_qrcode -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+      </head>
+      <body>
+        ${pageHtml}
+        <div class="no-print" style="text-align:center;margin-top:8px">
+          <button onclick="window.print()">Cetak</button>
+          <button onclick="window.close()">Tutup</button>
+        </div>
+        <script>
+          // For every placeholder QR element, generate QR from the nearby code text
+          (function(){
+            try {
+              document.querySelectorAll('.qr-placeholder').forEach(function(el){
+                // find nearby kode_aset text
+                var parent = el.closest('.container');
+                if (!parent) return;
+                var codeEl = parent.querySelector('.qr-code-text');
+                var code = codeEl ? codeEl.textContent.trim() : null;
+                if (!code) return;
+
+                var canvas = document.createElement('canvas');
+                var qr = new QRious({
+                  element: canvas,
+                  value: code,
+                  size: 180
+                });
+                var img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100%';
+                el.replaceWith(img);
+              });
+            } catch (e) {
+              console.warn('QR generation failed', e);
+            }
+          })();
+        </script>
+      </body>
+      </html>
+    `;
+
+    win.document.write(doc);
+    win.document.close();
+  };
+
+  // When in selectMode, print selected assets grouped by 5 per page
+  const handlePrintSelected = () => {
+    if (selectedIds.length === 0) {
+      alert('Pilih minimal 1 aset untuk dicetak');
+      return;
+    }
+
+    const selectedAssets = allAssets.filter(a => selectedIds.includes(a.id_aset));
+    const pages = chunk(selectedAssets, 5);
+    buildPrintWindowForPages(pages);
+  };
+
   if (loading) return <TableSkeleton />;
   
   return (
@@ -302,16 +457,52 @@ export function AssetsPage() {
         <div className="flex gap-3">
           <button 
             onClick={handleRefresh}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2"
+            className="bg-blue-600 text-white px-4 py-3 rounded-xl shadow hover:bg-blue-700 transition-all duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Refresh Data
           </button>
+
+          {selectMode && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'}`}>
+                {selectedIds.length} terpilih
+              </span>
+              <button
+                onClick={() => { setSelectedIds([]); setSelectAll(false); }}
+                className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+                title="Hapus Pilihan"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
           <button 
-            onClick={handlePrintQRCodes}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors duration-200 dark:bg-green-700 dark:hover:bg-green-600 flex items-center gap-2"
+            onClick={() => setSelectMode(prev => !prev)}
+            className={`${selectMode ? 'bg-yellow-500 dark:bg-yellow-600' : 'bg-gray-200 dark:bg-gray-700'} text-white px-4 py-3 rounded-xl shadow hover:opacity-90 transition-all duration-200 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5`}
+            title={selectMode ? 'Matikan mode pilih' : 'Aktifkan mode pilih untuk memilih beberapa aset'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7 7h.01M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5z" />
+            </svg>
+            {selectMode ? 'Mode Pilih Aktif' : 'Aktifkan Pilih'}
+          </button>
+
+          <button 
+            onClick={selectMode ? undefined : handlePrintQRCodes}
+            onDoubleClick={selectMode ? undefined : undefined}
+            className="bg-green-600 text-white px-4 py-3 rounded-xl shadow hover:bg-green-700 transition-all duration-200 dark:bg-green-700 dark:hover:bg-green-600 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5"
+            onClickCapture={(e) => {
+              if (selectMode) {
+                // If selectMode active, print selected items
+                e.preventDefault();
+                handlePrintSelected();
+              }
+            }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -320,7 +511,7 @@ export function AssetsPage() {
           </button>
           <Link 
             to="/assets/new" 
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2"
+            className="bg-blue-600 text-white px-4 py-3 rounded-xl shadow hover:bg-blue-700 transition-all duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -331,7 +522,7 @@ export function AssetsPage() {
       </div>
 
       {/* --- BAGIAN PENCARIAN & FILTER --- */}
-      <div className={`mb-6 p-4 rounded-lg shadow-md ${
+      <div className={`mb-6 p-5 rounded-xl shadow-lg ${
         theme === "dark" ? "bg-gray-800" : "bg-white"
       }`}>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -342,7 +533,7 @@ export function AssetsPage() {
                 placeholder="Cari berdasarkan Kode Aset..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                className={`w-full pl-10 pr-4 py-3 rounded-xl border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
                   theme === "dark" 
                     ? "bg-gray-700 border-gray-600 text-white" 
                     : "bg-white border-gray-300 text-gray-900"
@@ -361,7 +552,7 @@ export function AssetsPage() {
             <select
               value={filterNamaBarang}
               onChange={(e) => setFilterNamaBarang(e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
                 theme === "dark" 
                   ? "bg-gray-700 border-gray-600 text-white" 
                   : "bg-white border-gray-300 text-gray-900"
@@ -377,7 +568,7 @@ export function AssetsPage() {
             <select
               value={filterLokasi}
               onChange={(e) => setFilterLokasi(e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
                 theme === "dark" 
                   ? "bg-gray-700 border-gray-600 text-white" 
                   : "bg-white border-gray-300 text-gray-900"
@@ -396,7 +587,7 @@ export function AssetsPage() {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              className={`px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
                 theme === "dark" 
                   ? "bg-gray-700 border-gray-600 text-white" 
                   : "bg-white border-gray-300 text-gray-900"
@@ -417,7 +608,7 @@ export function AssetsPage() {
       </div>
 
       {searchTerm && (
-        <div className={`mb-4 p-3 rounded-lg ${
+        <div className={`mb-4 p-4 rounded-xl ${
           theme === "dark" ? "bg-gray-700" : "bg-blue-50"
         }`}>
           <p className={`text-sm ${
@@ -429,17 +620,17 @@ export function AssetsPage() {
         </div>
       )}
 
-      <div className={`rounded-lg shadow-md overflow-hidden ${
+      <div className={`rounded-xl shadow-lg overflow-hidden ${
         theme === "dark" ? "bg-gray-800" : "bg-white"
       }`}>
         {filteredAssets.length === 0 ? (
-          <div className={`text-center p-12 rounded-lg ${
+          <div className={`text-center p-12 rounded-xl ${
             theme === "dark" ? "bg-gray-800" : "bg-white"
-          } shadow`}>
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          } shadow-lg`}>
+            <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 className={`mt-2 text-sm font-medium ${
+            <h3 className={`mt-2 text-lg font-medium ${
               theme === "dark" ? "text-gray-200" : "text-gray-900"
             }`}>
               {searchTerm || filterNamaBarang || filterLokasi ? "Aset tidak ditemukan" : "Belum ada aset terdaftar"}
@@ -452,11 +643,11 @@ export function AssetsPage() {
             <div className="mt-6">
               <Link
                 to="/assets/new"
-                className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
+                className={`inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-xl text-white ${
                   theme === "dark" 
                     ? "bg-blue-600 hover:bg-blue-700" 
                     : "bg-blue-500 hover:bg-blue-600"
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-lg`}
               >
                 <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -469,34 +660,47 @@ export function AssetsPage() {
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className={theme === "dark" ? "bg-gray-700" : "bg-gray-50"}>
+                <thead className={theme === "dark" ? "bg-gray-750" : "bg-gray-50"}>
                   <tr>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    {selectMode && (
+                      <th className={`px-4 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                        theme === "dark" ? "text-gray-300" : "text-gray-500"
+                      }`}>
+                        <input type="checkbox" checked={selectAll} onChange={() => toggleAll()} className="rounded" />
+                      </th>
+                    )}
+
+                    <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                       theme === "dark" ? "text-gray-300" : "text-gray-500"
                     }`}>
                       Kode Aset
                     </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                       theme === "dark" ? "text-gray-300" : "text-gray-500"
                     }`}>
                       Nama Barang
                     </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                       theme === "dark" ? "text-gray-300" : "text-gray-500"
                     }`}>
                       Lokasi
                     </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                       theme === "dark" ? "text-gray-300" : "text-gray-500"
                     }`}>
-                      Status
+                      Gedung
                     </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                    <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
                       theme === "dark" ? "text-gray-300" : "text-gray-500"
                     }`}>
-                      Kondisi
+                      Ruangan
                     </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${
+                    <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      theme === "dark" ? "text-gray-300" : "text-gray-500"
+                    }`}>
+                      Lantai
+                    </th>
+                    <th className={`px-6 py-4 text-right text-xs font-medium uppercase tracking-wider ${
                       theme === "dark" ? "text-gray-300" : "text-gray-500"
                     }`}>
                       Aksi
@@ -509,14 +713,26 @@ export function AssetsPage() {
                   {currentItems.map((asset) => (
                     <tr 
                       key={asset.id_aset} 
-                      className={`transition-colors ${
-                        theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-50"
+                      className={`transition-colors duration-150 ${
+                        theme === "dark" ? "hover:bg-gray-750" : "hover:bg-gray-50"
                       }`}
                     >
+                      {selectMode && (
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm ${
+                          theme === "dark" ? "text-gray-300" : "text-gray-500"
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(asset.id_aset)}
+                            onChange={() => toggleItem(asset.id_aset)}
+                            className="rounded"
+                          />
+                        </td>
+                      )}
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                         theme === "dark" ? "text-white" : "text-gray-900"
                       }`}>
-                        <span className="font-mono text-blue-600">
+                        <span className="font-mono text-blue-600 dark:text-blue-400">
                           {asset.kode_aset}
                         </span>
                       </td>
@@ -528,43 +744,40 @@ export function AssetsPage() {
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}>
-                        {asset.lokasi?.nama_ruangan || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          asset.status_aset === 'Tersedia' 
-                            ? theme === "dark" 
-                              ? "bg-green-800 text-green-100" 
-                              : "bg-green-100 text-green-800"
-                            : asset.status_aset === 'Dipinjam'
-                            ? theme === "dark" 
-                              ? "bg-yellow-800 text-yellow-100" 
-                              : "bg-yellow-100 text-yellow-800"
-                            : theme === "dark" 
-                              ? "bg-red-800 text-red-100" 
-                              : "bg-red-100 text-red-800"
-                        }`}>
-                          {asset.status_aset}
-                        </span>
+                        {asset.lokasi?.gedung?.kampus?.nama_kampus ?? 'N/A'}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}>
-                        {asset.kondisi_terakhir || '-'}
+                        {asset.lokasi?.gedung?.nama_gedung ?? asset.gedung?.nama_gedung ?? 'N/A'}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        theme === "dark" ? "text-gray-300" : "text-gray-500"
+                      }`}>
+                        {asset.lokasi?.nama_ruangan || 'N/A'}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        theme === "dark" ? "text-gray-300" : "text-gray-500"
+                      }`}>
+                        {asset.lokasi?.lantai ?? '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Link 
                             to={`/assets/${asset.id_aset}`} 
-                            className={`mr-3 ${
-                              theme === "dark" ? "text-indigo-400 hover:text-indigo-300" : "text-indigo-600 hover:text-indigo-900"
+                            className={`mr-3 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
+                              theme === "dark" 
+                                ? "bg-indigo-600 text-white hover:bg-indigo-700" 
+                                : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
                             }`}
                           >
                             Detail
                         </Link>
                         <button
                           onClick={() => handlePrintSingleQR(asset)}
-                          className={`mr-3 ${
-                            theme === "dark" ? "text-green-400 hover:text-green-300" : "text-green-600 hover:text-green-900"
+                          className={`mr-3 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
+                            theme === "dark" 
+                              ? "bg-green-600 text-white hover:bg-green-700" 
+                              : "bg-green-100 text-green-700 hover:bg-green-200"
                           }`}
                           title="Cetak QR Code"
                         >
@@ -574,8 +787,10 @@ export function AssetsPage() {
                         </button>
                         <button
                           onClick={() => handleDeleteClick(asset)}
-                          className={`${
-                            theme === "dark" ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-900"
+                          className={`px-3 py-1.5 rounded-lg transition-colors duration-200 ${
+                            theme === "dark" 
+                              ? "bg-red-600 text-white hover:bg-red-700" 
+                              : "bg-red-100 text-red-700 hover:bg-red-200"
                           }`}
                           title="Hapus Aset"
                         >
@@ -592,7 +807,7 @@ export function AssetsPage() {
             
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className={`px-4 py-3 flex items-center justify-between border-t ${
+              <div className={`px-4 py-4 flex items-center justify-between border-t ${
                 theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
               }`}>
                 <div className={`text-sm ${
@@ -604,7 +819,7 @@ export function AssetsPage() {
                   <button
                     onClick={() => paginate(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-3 py-1 rounded-md transition-colors flex items-center ${
+                    className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
                       currentPage === 1
                         ? theme === "dark" 
                           ? "bg-gray-700 text-gray-500 cursor-not-allowed" 
@@ -659,7 +874,7 @@ export function AssetsPage() {
                       
                       return pageNumbers.map((pageNum, index) => (
                         pageNum === '...' ? (
-                          <span key={`ellipsis-${index}`} className={`px-2 py-1 ${
+                          <span key={`ellipsis-${index}`} className={`px-3 py-2 ${
                             theme === "dark" ? "text-gray-400" : "text-gray-500"
                           }`}>
                             ...
@@ -668,7 +883,7 @@ export function AssetsPage() {
                           <button
                             key={pageNum}
                             onClick={() => paginate(pageNum as number)}
-                            className={`w-8 h-8 rounded-md transition-colors ${
+                            className={`w-10 h-10 rounded-lg transition-colors ${
                               currentPage === pageNum
                                 ? "bg-blue-600 text-white"
                                 : theme === "dark" 
@@ -686,7 +901,7 @@ export function AssetsPage() {
                   <button
                     onClick={() => paginate(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className={`px-3 py-1 rounded-md transition-colors flex items-center ${
+                    className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
                       currentPage === totalPages
                         ? theme === "dark" 
                           ? "bg-gray-700 text-gray-500 cursor-not-allowed" 
@@ -708,7 +923,7 @@ export function AssetsPage() {
       {/* Print Modal */}
       {showPrintModal && (
         <Modal isOpen={showPrintModal} onClose={() => setShowPrintModal(false)} title="Cetak Kode Aset">
-          <div className="p-4">
+          <div className="p-6">
             <p className={`mb-6 ${
               theme === "dark" ? "text-gray-300" : "text-gray-600"
             }`}>
@@ -717,7 +932,7 @@ export function AssetsPage() {
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowPrintModal(false)}
-                className={`px-4 py-2 border rounded-md transition-colors ${
+                className={`px-6 py-3 border rounded-xl transition-colors ${
                   theme === "dark" 
                     ? "border-gray-600 text-gray-300 hover:bg-gray-700" 
                     : "border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -730,7 +945,7 @@ export function AssetsPage() {
                   setShowPrintModal(false);
                   generatePrintContent();
                 }}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors duration-200"
               >
                 Cetak
               </button>
@@ -742,7 +957,7 @@ export function AssetsPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && assetToDelete && (
         <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Konfirmasi Hapus">
-          <div className="p-4">
+          <div className="p-6">
             <p className={`mb-6 ${
               theme === "dark" ? "text-gray-300" : "text-gray-600"
             }`}>
@@ -751,7 +966,7 @@ export function AssetsPage() {
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className={`px-4 py-2 border rounded-md transition-colors ${
+                className={`px-6 py-3 border rounded-xl transition-colors ${
                   theme === "dark" 
                     ? "border-gray-600 text-gray-300 hover:bg-gray-700" 
                     : "border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -761,7 +976,7 @@ export function AssetsPage() {
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors duration-200"
               >
                 Hapus
               </button>

@@ -131,14 +131,28 @@ export class AssetsService {
 
   async findAll(): Promise<Asset[]> {
     return this.assetRepository.find({
-      relations: ['item', 'lokasi', 'unitKerja', 'group'],
+      relations: [
+        'item',
+        'lokasi',
+        'lokasi.gedung',
+        'lokasi.gedung.kampus',
+        'unitKerja',
+        'group',
+      ],
     });
   }
 
   async findOne(id: number): Promise<Asset> {
     const asset = await this.assetRepository.findOne({
       where: { id_aset: id },
-      relations: ['item', 'lokasi', 'unitKerja', 'group'],
+      relations: [
+        'item',
+        'lokasi',
+        'lokasi.gedung',
+        'lokasi.gedung.kampus',
+        'unitKerja',
+        'group',
+      ],
     });
 
     if (!asset) {
@@ -162,7 +176,7 @@ export class AssetsService {
   async findAllByLocation(id_lokasi: number): Promise<Asset[]> {
     const assets = await this.assetRepository.find({
       where: { id_lokasi: id_lokasi },
-      relations: ['item', 'lokasi', 'unitKerja'],
+      relations: ['item', 'lokasi', 'lokasi.gedung', 'lokasi.gedung.kampus', 'unitKerja'],
     });
 
     if (!assets || assets.length === 0) {

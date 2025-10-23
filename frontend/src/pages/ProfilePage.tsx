@@ -20,32 +20,15 @@ export function ProfilePage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const handleProfileUpdate = async (data: UpdateProfileData | FormData) => {
+  const handleProfileUpdate = async (data: UpdateProfileData) => {
     setProfileLoading(true);
     try {
-      let response;
-      
-      // Cek apakah data adalah FormData (untuk upload file)
-      if (data instanceof FormData) {
-        // Untuk FormData, kita perlu mengatur header khusus
-        const config = {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        };
-        response = await api.patch('/auth/profile', data, config);
-      } else {
-        // Untuk data biasa (tanpa upload file)
-        response = await api.patch('/auth/profile', data);
-      }
-      
-      const updatedUser = response.data; // API mengembalikan data user baru
+      const resp = await api.patch('/auth/profile', data);
+      const updatedUser = resp.data;
 
       // Update user di AuthContext
       const token = localStorage.getItem("access_token");
-      if (token) {
-        login(token, updatedUser); // Memperbarui state global
-      }
+      if (token) await login(token, updatedUser);
 
       toast.success('Profil berhasil diperbarui!');
     } catch (error: any) {
@@ -66,6 +49,8 @@ export function ProfilePage() {
       setProfileLoading(false);
     }
   };
+
+  
 
   const handleChangePassword = async (data: ChangePasswordData) => {
     setPasswordLoading(true);
@@ -99,7 +84,7 @@ export function ProfilePage() {
           </h2>
           <UpdateProfileForm
             initialData={user}
-            onSubmit={handleProfileUpdate}
+            onSubmit={handleProfileUpdate as any}
             isSubmitting={profileLoading}
           />
         </div>
