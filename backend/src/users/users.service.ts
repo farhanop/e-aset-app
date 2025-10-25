@@ -92,7 +92,9 @@ export class UsersService {
     });
 
     // Pastikan password tidak pernah dikirim ke frontend
-    const usersWithoutPassword = users.map((user) => this.excludePassword(user));
+    const usersWithoutPassword = users.map((user) =>
+      this.excludePassword(user),
+    );
 
     return { data: usersWithoutPassword, total };
   }
@@ -103,15 +105,15 @@ export class UsersService {
    * @returns Objek pengguna tanpa password.
    */
   async findOne(username: string): Promise<Omit<User, 'password'> | undefined> {
-    const user = await this.usersRepository.findOne({ 
+    const user = await this.usersRepository.findOne({
       where: { username },
-      relations: ['roles'] // Pastikan memuat roles
+      relations: ['roles'], // Pastikan memuat roles
     });
-    
+
     if (!user) {
       return undefined;
     }
-    
+
     return this.excludePassword(user);
   }
 
@@ -121,15 +123,15 @@ export class UsersService {
    * @returns Objek pengguna tanpa password.
    */
   async findOneById(id: number): Promise<Omit<User, 'password'> | undefined> {
-    const user = await this.usersRepository.findOne({ 
+    const user = await this.usersRepository.findOne({
       where: { id_user: id },
-      relations: ['roles'] // Memuat roles, tapi tidak password
+      relations: ['roles'], // Memuat roles, tapi tidak password
     });
-    
+
     if (!user) {
       return undefined;
     }
-    
+
     return this.excludePassword(user);
   }
 
@@ -138,13 +140,15 @@ export class UsersService {
    * @param email - Email yang dicari.
    * @returns Objek pengguna tanpa password.
    */
-  async findOneByEmail(email: string): Promise<Omit<User, 'password'> | undefined> {
+  async findOneByEmail(
+    email: string,
+  ): Promise<Omit<User, 'password'> | undefined> {
     const user = await this.usersRepository.findOne({ where: { email } });
-    
+
     if (!user) {
       return undefined;
     }
-    
+
     return this.excludePassword(user);
   }
 
@@ -158,7 +162,7 @@ export class UsersService {
       where: { id_user: id },
       select: ['id_user', 'username', 'password'], // Pilih kolom spesifik
     });
-    
+
     return user || undefined;
   }
 
@@ -176,7 +180,7 @@ export class UsersService {
       .addSelect('user.password') // Memaksa kolom password untuk disertakan
       .where('user.username = :username', { username })
       .getOne();
-    
+
     return user || undefined;
   }
 
@@ -192,20 +196,25 @@ export class UsersService {
   ): Promise<Omit<User, 'password'>> {
     // 'Partial<UpdateUserDto>' akan menangani update profil
     // '{ password?: string }' akan menangani ganti password
-    
+
     const user = await this.findOneById(id);
     if (!user) {
       throw new NotFoundException('User tidak ditemukan');
     }
-    
+
     // Cek jika username atau email baru sudah digunakan
-    if ('username' in updateUserDto && updateUserDto.username !== user.username) {
+    if (
+      'username' in updateUserDto &&
+      updateUserDto.username !== user.username
+    ) {
       const existingUser = await this.usersRepository.findOne({
         where: { username: updateUserDto.username },
       });
-      
+
       if (existingUser) {
-        throw new ConflictException('Username sudah digunakan oleh pengguna lain');
+        throw new ConflictException(
+          'Username sudah digunakan oleh pengguna lain',
+        );
       }
     }
 
@@ -213,7 +222,7 @@ export class UsersService {
       const existingUser = await this.usersRepository.findOne({
         where: { email: updateUserDto.email },
       });
-      
+
       if (existingUser) {
         throw new ConflictException('Email sudah digunakan oleh pengguna lain');
       }
@@ -223,10 +232,10 @@ export class UsersService {
     if ('password' in updateUserDto && updateUserDto.password) {
       updateUserDto.password = await this.hashPassword(updateUserDto.password);
     }
-    
+
     // Gabungkan data lama dengan data baru
     Object.assign(user, updateUserDto);
-    
+
     // Simpan data yang sudah di-merge
     const updatedUser = await this.usersRepository.save(user);
     return this.excludePassword(updatedUser);
@@ -242,7 +251,7 @@ export class UsersService {
       where: { id_user: id },
       relations: ['roles'],
     });
-    
+
     if (!user) {
       throw new NotFoundException(`User dengan ID ${id} tidak ditemukan`);
     }
@@ -250,10 +259,10 @@ export class UsersService {
     // Hapus relasi user-roles terlebih dahulu
     user.roles = [];
     await this.usersRepository.save(user);
-    
+
     // Kemudian hapus user
     const result = await this.usersRepository.delete(id);
-    
+
     if (result.affected === 0) {
       throw new NotFoundException(`Gagal menghapus user dengan ID ${id}`);
     }
@@ -265,12 +274,15 @@ export class UsersService {
    * @param roleId - ID role yang akan ditambahkan
    * @returns User yang sudah diperbarui
    */
-  async addRoleToUser(userId: number, roleId: number): Promise<Omit<User, 'password'>> {
+  async addRoleToUser(
+    userId: number,
+    roleId: number,
+  ): Promise<Omit<User, 'password'>> {
     const user = await this.usersRepository.findOne({
       where: { id_user: userId },
       relations: ['roles'],
     });
-    
+
     if (!user) {
       throw new NotFoundException(`User dengan ID ${userId} tidak ditemukan`);
     }
@@ -278,19 +290,21 @@ export class UsersService {
     const role = await this.rolesRepository.findOne({
       where: { id_role: roleId },
     });
-    
+
     if (!role) {
       throw new NotFoundException(`Role dengan ID ${roleId} tidak ditemukan`);
     }
 
     // Cek apakah user sudah memiliki role ini
-    if (user.roles.some(r => r.id_role === roleId)) {
-      throw new BadRequestException(`User sudah memiliki role ${role.nama_role}`);
+    if (user.roles.some((r) => r.id_role === roleId)) {
+      throw new BadRequestException(
+        `User sudah memiliki role ${role.nama_role}`,
+      );
     }
 
     user.roles.push(role);
     const updatedUser = await this.usersRepository.save(user);
-    
+
     return this.excludePassword(updatedUser);
   }
 
@@ -300,25 +314,30 @@ export class UsersService {
    * @param roleId - ID role yang akan dihapus
    * @returns User yang sudah diperbarui
    */
-  async removeRoleFromUser(userId: number, roleId: number): Promise<Omit<User, 'password'>> {
+  async removeRoleFromUser(
+    userId: number,
+    roleId: number,
+  ): Promise<Omit<User, 'password'>> {
     const user = await this.usersRepository.findOne({
       where: { id_user: userId },
       relations: ['roles'],
     });
-    
+
     if (!user) {
       throw new NotFoundException(`User dengan ID ${userId} tidak ditemukan`);
     }
 
     // Cek apakah user memiliki role ini
-    const roleIndex = user.roles.findIndex(r => r.id_role === roleId);
+    const roleIndex = user.roles.findIndex((r) => r.id_role === roleId);
     if (roleIndex === -1) {
-      throw new BadRequestException(`User tidak memiliki role dengan ID ${roleId}`);
+      throw new BadRequestException(
+        `User tidak memiliki role dengan ID ${roleId}`,
+      );
     }
 
     user.roles.splice(roleIndex, 1);
     const updatedUser = await this.usersRepository.save(user);
-    
+
     return this.excludePassword(updatedUser);
   }
 
@@ -332,7 +351,7 @@ export class UsersService {
       where: { id_user: userId },
       relations: ['roles'],
     });
-    
+
     if (!user) {
       throw new NotFoundException(`User dengan ID ${userId} tidak ditemukan`);
     }

@@ -1,5 +1,4 @@
-
-// file: backend/src/assets/assets.service.ts
+// backend/src/assets/assets.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -28,7 +27,7 @@ export class AssetsService {
   ) {}
 
   async create(createAssetDto: CreateAssetDto): Promise<Asset[]> {
-    const { jumlah, id_item, id_lokasi, id_unit_kerja, tgl_perolehan, foto_barang } = createAssetDto;
+    const { jumlah, id_item, id_lokasi, id_unit_kerja, tgl_perolehan, foto_barang, file_dokumen } = createAssetDto;
     const createdAssets: Asset[] = [];
 
     const lastAsset = await this.assetRepository.findOne({
@@ -72,6 +71,7 @@ export class AssetsService {
         nomor_urut: currentNomorUrut,
         file_qrcode: `/uploads/qrcodes/${qrCodeFileName}`,
         foto_barang: foto_barang || undefined,
+        file_dokumen: file_dokumen || undefined, // Gunakan file_dokumen
         id_item,
         id_lokasi,
         id_unit_kerja,

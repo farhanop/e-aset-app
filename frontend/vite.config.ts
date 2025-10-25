@@ -8,4 +8,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   // Tambahkan base path jika diperlukan
   base: "./",
+  esbuild: {
+    drop: ["console", "debugger"],
+  },
 });

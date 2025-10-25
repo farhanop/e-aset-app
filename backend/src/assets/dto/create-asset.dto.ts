@@ -1,4 +1,4 @@
-// src/assets/dto/create-asset.dto.ts
+// backend/src/assets/dto/create-asset.dto.ts
 import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateAssetDto {
@@ -41,6 +41,10 @@ export class CreateAssetDto {
   @IsString()
   @IsOptional()
   foto_barang?: string;
+
+  @IsString()
+  @IsOptional()
+  file_dokumen?: string;
 
   @IsString()
   @IsOptional()

@@ -1,4 +1,4 @@
-// src/assets/dto/update-asset.dto.ts
+// backend/src/assets/dto/update-asset.dto.ts
 import { 
   IsString, 
   IsOptional, 
@@ -132,7 +132,6 @@ export class UpdateAssetDto {
   @Min(1)
   nomor_urut?: number;
 
-  // Tambahkan property jumlah
   @ApiPropertyOptional({
     description: 'Jumlah aset',
     example: 1,
@@ -176,7 +175,7 @@ export class UpdateAssetDto {
   })
   @IsOptional()
   @IsString()
-  file_pengadaan?: string;
+  file_dokumen?: string;
 
   @ApiPropertyOptional({
     description: 'Foto barang',

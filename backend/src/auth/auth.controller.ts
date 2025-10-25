@@ -1,6 +1,24 @@
-// backend\src\auth\auth.controller.ts
-import { Controller, Post, UseGuards, Request, Get, Patch, Body, ValidationPipe } from '@nestjs/common';
-import { UseInterceptors, UploadedFile, BadRequestException, Request as NestRequest } from '@nestjs/common';
+// backend/src/auth/auth.controller.ts
+import {
+  Controller,
+  Post,
+  UseGuards,
+  Request,
+  Get,
+  Patch,
+  Body,
+  ValidationPipe,
+  Inject,
+  UnauthorizedException,
+  NotFoundException,
+  Delete,
+} from '@nestjs/common';
+import {
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Request as NestRequest,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -12,17 +30,20 @@ import { LocalAuthGuard } from './local-auth.guard';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { SlidingThrottlerGuard } from '../common/guards/sliding-throttler.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
+    @Inject(SlidingThrottlerGuard)
+    private slidingThrottlerGuard: SlidingThrottlerGuard,
   ) {}
 
   // Aturan yang lebih ketat KHUSUS untuk endpoint login
   // Aturan ini akan menimpa (override) aturan global yang ada di app.module.ts
-  @Throttle({ default: { limit: 50, ttl: 60000 } }) // Hanya 50 percobaan dalam 1 menit
+  @Throttle({ default: { limit: 50, ttl: 1800 } }) // 50 requests per 30 minutes
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Request() req) {
@@ -33,8 +54,38 @@ export class AuthController {
   @SkipThrottle()
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Request() req) {
-    return req.user;
+  async getProfile(@Request() req) {
+    console.log('Profile endpoint called with user:', req.user);
+
+    // Perbaikan: Coba semua kemungkinan lokasi ID user
+    const userId = req.user.sub || req.user.id_user || req.user.userId;
+
+    if (!userId) {
+      console.error('User object does not contain ID:', req.user);
+      throw new UnauthorizedException('Token tidak memiliki ID pengguna.');
+    }
+
+    console.log('Extracted userId:', userId);
+
+    // ✅ Ambil data user dari database
+    const user = await this.usersService.findOneById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User tidak ditemukan.');
+    }
+
+    // ✅ Tambahkan informasi session ke response
+    const sessionInfo = this.slidingThrottlerGuard.getUserSessionInfo(userId);
+
+    // ✅ Kembalikan user data tanpa password
+    const result = {
+      ...user,
+      sessionInfo,
+    };
+
+    console.log('Profile data to be sent:', result);
+
+    return result;
   }
 
   // Endpoint untuk update profil
@@ -74,7 +125,10 @@ export class AuthController {
       },
     }),
   )
-  async uploadProfilePhoto(@NestRequest() req, @UploadedFile() file: Express.Multer.File) {
+  async uploadProfilePhoto(
+    @NestRequest() req,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -95,12 +149,18 @@ export class AuthController {
               await fs.unlink(absoluteOld);
             } catch (err) {
               // ignore unlink errors (file may not exist)
-              console.warn('Could not delete old profile photo:', absoluteOld, err.message || err);
+              console.warn(
+                'Could not delete old profile photo:',
+                absoluteOld,
+                err.message || err,
+              );
             }
           }
 
           // Persist new foto_profil on user
-          const updated = await this.usersService.update(userId, { foto_profil: newPath } as any);
+          const updated = await this.usersService.update(userId, {
+            foto_profil: newPath,
+          } as any);
           return {
             message: 'Profile photo uploaded and profile updated',
             url: newPath,
@@ -130,5 +190,69 @@ export class AuthController {
   ) {
     const userId = req.user.sub; // Ambil ID user dari JWT (sub)
     return this.authService.changePassword(userId, changePasswordDto);
+  }
+
+  // Endpoint untuk logout manual
+  @UseGuards(JwtAuthGuard)
+  @Delete('logout')
+  async logoutOtherSessions(@Request() req) {
+    const userId = req.user.sub;
+    const currentToken = req.headers.authorization?.replace('Bearer ', '');
+
+    // Hapus semua session kecuali yang saat ini
+    const result = await this.slidingThrottlerGuard.clearUserSessions(
+      userId,
+      currentToken,
+    );
+
+    return {
+      message: result
+        ? 'Semua session lain berhasil dihapus'
+        : 'Tidak ada session lain yang aktif',
+      success: result,
+    };
+  }
+
+  // Endpoint untuk mendapatkan status session
+  @UseGuards(JwtAuthGuard)
+  @Get('session-status')
+  getSessionStatus(@Request() req) {
+    const userId = req.user.sub;
+    const status = this.slidingThrottlerGuard.getUserActivityStatus(userId);
+
+    return {
+      userId,
+      status: status
+        ? {
+            isActive: status.isActive,
+            timeRemaining: status.timeRemaining,
+            lastActivity: status.lastActivity,
+            username: status.username,
+            isNearTimeout: status.timeRemaining <= 2 * 60 * 1000, // 2 menit
+          }
+        : {
+            isActive: false,
+            message: 'Tidak ada session aktif',
+          },
+    };
+  }
+
+  // Endpoint untuk admin melihat active sessions (opsional)
+  @UseGuards(JwtAuthGuard)
+  @Get('admin/active-sessions')
+  getActiveSessions(@Request() req) {
+    // Tambahkan authorization check di sini untuk role admin jika diperlukan
+    // if (!req.user.roles.includes('admin')) {
+    //   throw new UnauthorizedException('Akses ditolak');
+    // }
+
+    const activeSessions = this.slidingThrottlerGuard.getActiveSessions();
+    const cacheStats = this.slidingThrottlerGuard.getCacheStats();
+
+    return {
+      cacheStats,
+      activeSessions,
+      timestamp: new Date().toISOString(),
+    };
   }
 }

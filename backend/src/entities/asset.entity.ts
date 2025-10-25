@@ -22,8 +22,12 @@ export class Asset {
   @Column({ length: 255, nullable: true})
   file_qrcode: string;
 
-  @Column({ length: 255, nullable: true}) // Pastikan kolom ini ada
+  @Column({ length: 255, nullable: true}) 
   foto_barang: string;
+
+  // Gunakan nama kolom yang sesuai dengan database
+  @Column({ length: 255, nullable: true})
+  file_dokumen: string;
 
   @Column()
   id_item: number;

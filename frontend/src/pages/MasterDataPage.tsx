@@ -161,6 +161,10 @@ function CrudTab<T extends { [key: string]: any }>({
   const [editingItem, setEditingItem] = useState<T | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => { 
     fetchData(); 
@@ -179,7 +183,14 @@ function CrudTab<T extends { [key: string]: any }>({
       );
       setFilteredData(filtered);
     }
+    // Reset to first page when searching
+    setCurrentPage(1);
   }, [data, searchTerm, searchableColumns]);
+
+  // Reset pagination when items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -338,6 +349,21 @@ function CrudTab<T extends { [key: string]: any }>({
     setSearchTerm(e.target.value);
   };
   
+  // Pagination calculations
+  const displayData = searchTerm ? filteredData : data;
+  const totalPages = Math.ceil(displayData.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = displayData.slice(indexOfFirstItem, indexOfLastItem);
+  
+  // Handle page change
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  
+  // Handle items per page change
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+  };
+  
   if (error) return (
     <div className={`text-center p-8 rounded-xl ${
       theme === "dark" ? "bg-red-900/20" : "bg-red-50"
@@ -362,8 +388,6 @@ function CrudTab<T extends { [key: string]: any }>({
   );
   
   if (loading) return <TableSkeleton />;
-  
-  const displayData = searchTerm ? filteredData : data;
   
   // Fungsi untuk mendapatkan kelas warna berdasarkan tabColor
   const getColorClasses = (color: string, type: 'bg' | 'text' | 'border' | 'ring' | 'hover') => {
@@ -482,32 +506,62 @@ function CrudTab<T extends { [key: string]: any }>({
         </div>
       </div>
       
-      {/* Header dengan Search dan Add Button */}
+      {/* Header dengan Search, Items Per Page, dan Add Button */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
-        {searchableColumns.length > 0 && (
-          <div className="w-full lg:w-80 flex-shrink-0">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Cari..."
-                value={searchTerm}
-                onChange={handleSearch}
-                className={`w-full pl-10 pr-4 py-3 rounded-xl border focus:ring-2 focus:ring-${tabColor}-500 focus:border-${tabColor}-500 transition-all duration-200 ${
-                  theme === "dark" 
-                    ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" 
-                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-                }`}
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className={`h-5 w-5 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`} 
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+        <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+          {searchableColumns.length > 0 && (
+            <div className="w-full sm:w-80 flex-shrink-0">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Cari..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  className={`w-full pl-10 pr-4 py-3 rounded-xl border focus:ring-2 focus:ring-${tabColor}-500 focus:border-${tabColor}-500 transition-all duration-200 ${
+                    theme === "dark" 
+                      ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" 
+                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                  }`}
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className={`h-5 w-5 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`} 
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
               </div>
             </div>
+          )}
+          
+          {/* Items Per Page Selector - Dipindahkan ke sini */}
+          <div className="flex items-center gap-2">
+            <span className={`text-sm ${
+              theme === "dark" ? "text-gray-300" : "text-gray-700"
+            }`}>
+              Tampilkan
+            </span>
+            <select
+              value={itemsPerPage}
+              onChange={handleItemsPerPageChange}
+              className={`rounded-md border py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-${tabColor}-500 focus:border-${tabColor}-500 ${
+                theme === "dark" 
+                  ? "bg-gray-700 border-gray-600 text-white" 
+                  : "bg-white border-gray-300 text-gray-900"
+              }`}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className={`text-sm ${
+              theme === "dark" ? "text-gray-300" : "text-gray-700"
+            }`}>
+              item per halaman
+            </span>
           </div>
-        )}
+        </div>
         
         <div className="flex justify-end w-full lg:w-auto">
           <button 
@@ -592,7 +646,7 @@ function CrudTab<T extends { [key: string]: any }>({
                   <tbody className={`divide-y divide-gray-200 ${
                     theme === "dark" ? "bg-gray-800" : "bg-white"
                   }`}>
-                    {displayData.map((item) => (
+                    {currentItems.map((item) => (
                       <tr 
                         key={item[idAccessor]} 
                         className={`transition-colors duration-150 ${
@@ -639,6 +693,111 @@ function CrudTab<T extends { [key: string]: any }>({
                 </table>
               </div>
             </div>
+            
+            {/* Pagination Controls - Hanya navigasi halaman */}
+            <div className={`px-6 py-4 border-t ${
+              theme === "dark" ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"
+            }`}>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${
+                    theme === "dark" ? "text-gray-300" : "text-gray-700"
+                  }`}>
+                    Menampilkan {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, displayData.length)} dari {displayData.length} data
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`p-2 rounded-md ${
+                      currentPage === 1
+                        ? theme === "dark" 
+                          ? "text-gray-500 cursor-not-allowed" 
+                          : "text-gray-400 cursor-not-allowed"
+                        : theme === "dark"
+                          ? "text-gray-300 hover:bg-gray-700"
+                          : "text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  {/* Page numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => paginate(pageNum)}
+                        className={`w-10 h-10 rounded-md ${
+                          currentPage === pageNum
+                            ? `${colorClasses.bg} text-white`
+                            : theme === "dark"
+                              ? "text-gray-300 hover:bg-gray-700"
+                              : "text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  
+                  {/* Ellipsis for large page counts */}
+                  {totalPages > 5 && currentPage < totalPages - 2 && (
+                    <span className={`px-2 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                      ...
+                    </span>
+                  )}
+                  
+                  {totalPages > 5 && currentPage < totalPages - 2 && (
+                    <button
+                      onClick={() => paginate(totalPages)}
+                      className={`w-10 h-10 rounded-md ${
+                        currentPage === totalPages
+                          ? `${colorClasses.bg} text-white`
+                          : theme === "dark"
+                            ? "text-gray-300 hover:bg-gray-700"
+                            : "text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {totalPages}
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`p-2 rounded-md ${
+                      currentPage === totalPages
+                        ? theme === "dark" 
+                          ? "text-gray-500 cursor-not-allowed" 
+                          : "text-gray-400 cursor-not-allowed"
+                        : theme === "dark"
+                          ? "text-gray-300 hover:bg-gray-700"
+                          : "text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -683,7 +842,7 @@ export function MasterDataPage() {
       color: "green"
     },
     { 
-      name: "Fakultas", 
+      name: "Departemen/Fakultas", 
       key: "fakultas",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -813,7 +972,7 @@ export function MasterDataPage() {
                         modalTitle="Kampus"
                         idAccessor="id_kampus"
                         searchableColumns={['kode_kampus', 'nama_kampus']}
-                        tabName="Kampus"
+                        tabName="Lokasi"
                         tabIcon={tab.icon}
                         tabColor={tab.color}
                       />
@@ -854,7 +1013,7 @@ export function MasterDataPage() {
                         modalTitle="Unit Utama" 
                         idAccessor="id_unit_utama"
                         searchableColumns={['kode_unit_utama', 'nama_unit_utama']}
-                        tabName="Fakultas"
+                        tabName="Departemen/Fakultas"
                         tabIcon={tab.icon}
                         tabColor={tab.color}
                       />

@@ -18,7 +18,7 @@ interface GedungData {
 
 interface GedungFormProps {
   initialData?: GedungData | null;
-  onSubmit: (data: Omit<GedungData, 'id_gedung'>) => Promise<void>;
+  onSave: (data: Omit<GedungData, 'id_gedung'>) => Promise<void>;
   isLoading: boolean;
   onCancel?: () => void;
 }
@@ -35,7 +35,7 @@ interface ApiError {
 
 export const GedungForm: React.FC<GedungFormProps> = ({
   initialData,
-  onSubmit,
+  onSave,
   isLoading,
   onCancel,
 }) => {
@@ -132,7 +132,7 @@ export const GedungForm: React.FC<GedungFormProps> = ({
     
     if (validateForm()) {
       try {
-        await onSubmit(formData);
+        await onSave(formData);
       } catch (error) {
         console.error('Error submitting form:', error);
         

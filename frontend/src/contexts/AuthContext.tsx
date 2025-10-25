@@ -20,6 +20,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth harus digunakan di dalam AuthProvider");
+  }
+  return context;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -27,76 +35,102 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuthStatus = async () => {
       const token = localStorage.getItem("access_token");
+      const storedUser = localStorage.getItem("user");
+
       if (token) {
+        // Set token di header axios sebelum melakukan request
+        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        console.log("Token found in localStorage, checking validity...");
+
         try {
-          // Set token ke header axios
-          api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          if (storedUser) {
+            // Gunakan data lokal dulu agar UI langsung muncul
+            setUser(JSON.parse(storedUser));
+          }
+
+          // Pastikan data terbaru dari server
+          console.log("Fetching user profile...");
           const response = await api.get("/auth/profile");
+          console.log("Profile data received:", response.data);
           setUser(response.data);
+          localStorage.setItem("user", JSON.stringify(response.data));
         } catch (error) {
-          localStorage.removeItem("access_token");
-          delete api.defaults.headers.common["Authorization"];
           console.error("Sesi tidak valid, token dihapus:", error);
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+          delete api.defaults.headers.common["Authorization"];
+          setUser(null);
         }
       }
       setIsLoading(false);
     };
+
     checkAuthStatus();
   }, []);
 
   const login = async (token: string, userData?: User) => {
+    console.log("AuthContext login called");
+
+    // Simpan token ke localStorage
     localStorage.setItem("access_token", token);
-    // Set token ke header axios
+
+    // Set token di header axios
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    
+
     setIsLoading(true);
+
     try {
-      if (userData) {
-        setUser(userData);
-      } else {
+      let fetchedUser = userData;
+      if (!userData) {
+        // Ambil data user dari server jika tidak disediakan
+        console.log("Fetching user data from server...");
         const response = await api.get("/auth/profile");
-        setUser(response.data);
+        fetchedUser = response.data;
+        console.log("User data received:", fetchedUser);
       }
-      // Simpan flag untuk navigasi di komponen lain
+
+      if (fetchedUser) {
+        setUser(fetchedUser);
+        localStorage.setItem("user", JSON.stringify(fetchedUser));
+      }
+
       localStorage.setItem("shouldNavigateToDashboard", "true");
     } catch (error) {
       console.error("Gagal mengambil profil setelah login", error);
       localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
       delete api.defaults.headers.common["Authorization"];
       setUser(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = (message?: string) => {
+    console.log("AuthContext logout called");
+
     localStorage.removeItem("access_token");
+    localStorage.removeItem("user");
     delete api.defaults.headers.common["Authorization"];
     setUser(null);
-    
-    // Simpan pesan logout untuk ditampilkan di halaman login
+
     if (message) {
       localStorage.setItem("logoutMessage", message);
     }
-    
-    // Simpan flag untuk navigasi di komponen lain
     localStorage.setItem("shouldNavigateToLogin", "true");
   };
 
   const updateProfile = async (formData: FormData) => {
-    if (!user) {
-      throw new Error("User not authenticated");
-    }
+    if (!user) throw new Error("User not authenticated");
 
     try {
       const response = await api.patch("/auth/profile", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      
-      // Update user state dengan data terbaru
+
       setUser(response.data);
+      localStorage.setItem("user", JSON.stringify(response.data));
     } catch (error) {
       console.error("Update profile error:", error);
       throw error;
@@ -113,12 +147,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth harus digunakan di dalam AuthProvider");
-  }
-  return context;
 }

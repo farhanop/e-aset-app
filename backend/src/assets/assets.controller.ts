@@ -75,6 +75,43 @@ export class AssetsController {
     };
   }
 
+  @Post('upload-document')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/dokumen',
+        filename: (req, file, cb) => {
+          const randomName = Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        // Izinkan file PDF, DOC, DOCX
+        if (!file.originalname.match(/\.(pdf|doc|docx)$/)) {
+          return cb(new Error('Only PDF, DOC, and DOCX files are allowed!'), false);
+        }
+        cb(null, true);
+      },
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB
+      },
+    }),
+  )
+  async uploadDocument(@UploadedFile() file: Express.Multer.File) { 
+    if (!file) {
+      throw new BadRequestException('No document uploaded');
+    }
+    
+    return {
+      message: 'Document uploaded successfully',
+      url: `/uploads/dokumen/${file.filename}`,
+      filename: file.filename,
+    };
+  }
+
   @Get('qrcodes')
   getQRCodes() {
     const qrcodesDir = join(process.cwd(), 'uploads', 'qrcodes');
@@ -105,7 +142,12 @@ export class AssetsController {
 
   @Get()
   async findAll() {
-    return this.assetsService.findAll();
+    try {
+      return await this.assetsService.findAll();
+    } catch (error) {
+      console.error('Error in AssetsController.findAll:', error);
+      throw new BadRequestException(`Failed to fetch assets: ${error.message}`);
+    }
   }
 
   @Get(':id')
@@ -114,7 +156,10 @@ export class AssetsController {
       const asset = await this.assetsService.findOne(+id);
       return asset;
     } catch (error) {
-      throw new NotFoundException(`Aset dengan ID ${id} tidak ditemukan`);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(`Gagal mengambil aset: ${error.message}`);
     }
   }
 
@@ -141,6 +186,45 @@ export class AssetsController {
         throw error;
       }
       throw new BadRequestException(`Gagal mengambil QR Code: ${error.message}`);
+    }
+  }
+
+  @Get(':id/document')
+  async getDocument(@Param('id') id: string, @Res() res: Response) {
+    try {
+      const asset = await this.assetsService.findOne(+id);
+      
+      if (!asset.file_dokumen) { // Gunakan file_dokumen
+        throw new NotFoundException('Dokumen untuk aset ini tidak ditemukan');
+      }
+      
+      const documentPath = path.join(process.cwd(), asset.file_dokumen); // Gunakan file_dokumen
+      const documentBuffer = await fs.readFile(documentPath);
+      
+      // Tentukan content type berdasarkan ekstensi file
+      const ext = path.extname(asset.file_dokumen).toLowerCase(); // Gunakan file_dokumen
+      let contentType = 'application/octet-stream';
+      
+      if (ext === '.pdf') {
+        contentType = 'application/pdf';
+      } else if (ext === '.doc') {
+        contentType = 'application/msword';
+      } else if (ext === '.docx') {
+        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      }
+      
+      res.set({
+        'Content-Type': contentType,
+        'Content-Length': documentBuffer.length,
+        'Content-Disposition': `inline; filename="${path.basename(asset.file_dokumen)}"` // Gunakan file_dokumen
+      });
+      
+      res.send(documentBuffer);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(`Gagal mengambil dokumen: ${error.message}`);
     }
   }
 
@@ -204,6 +288,7 @@ export class AssetsController {
       status_aset: updateAssetDto.status_aset,
       kondisi_terakhir: updateAssetDto.kondisi_terakhir,
       foto_barang: updateAssetDto.foto_barang,
+      file_dokumen: updateAssetDto.file_dokumen, // Gunakan file_dokumen
     };
     
     return this.assetsService.update(+id, createAssetDto);
@@ -225,6 +310,7 @@ export class AssetsController {
       status_aset: updateAssetDto.status_aset,
       kondisi_terakhir: updateAssetDto.kondisi_terakhir,
       foto_barang: updateAssetDto.foto_barang,
+      file_dokumen: updateAssetDto.file_dokumen, // Gunakan file_dokumen
     };
     
     return this.assetsService.update(+id, createAssetDto);
@@ -250,6 +336,15 @@ export class AssetsController {
           await fs.unlink(fotoPath);
         } catch (error) {
           console.error('Gagal menghapus foto barang:', error);
+        }
+      }
+      
+      if (asset.file_dokumen) { // Gunakan file_dokumen
+        try {
+          const dokumenPath = path.join(process.cwd(), asset.file_dokumen); // Gunakan file_dokumen
+          await fs.unlink(dokumenPath);
+        } catch (error) {
+          console.error('Gagal menghapus dokumen:', error);
         }
       }
       

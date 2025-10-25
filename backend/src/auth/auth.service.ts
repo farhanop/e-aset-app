@@ -1,5 +1,10 @@
 // src/auth/auth.service.ts
-import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -24,7 +29,16 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { username: user.username, sub: user.userId, roles: user.roles };
+    const payload = {
+      username: user.username,
+      sub: user.id_user,
+      email: user.email,
+      roles: user.roles,
+      id_user: user.id_user,
+    };
+
+    console.log('Generating JWT for user:', payload);
+
     return {
       access_token: this.jwtService.sign(payload, {
         // Token akan kedaluwarsa dalam 30 menit
@@ -46,18 +60,25 @@ export class AuthService {
 
     // Cek jika email baru sudah digunakan oleh user lain
     if (updateProfileDto.email && updateProfileDto.email !== user.email) {
-      const existingEmail = await this.usersService.findOneByEmail(updateProfileDto.email);
+      const existingEmail = await this.usersService.findOneByEmail(
+        updateProfileDto.email,
+      );
       if (existingEmail && existingEmail.id_user !== userId) {
-        throw new BadRequestException('Email sudah digunakan oleh pengguna lain.');
+        throw new BadRequestException(
+          'Email sudah digunakan oleh pengguna lain.',
+        );
       }
     }
 
     // Update data
-    const updatedUser = await this.usersService.update(userId, updateProfileDto);
-    
+    const updatedUser = await this.usersService.update(
+      userId,
+      updateProfileDto,
+    );
+
     // Hapus password dari respons
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...result } = updatedUser as any; // Type assertion untuk menghindari error TypeScript
+    const { password, ...result } = updatedUser as any;
     return result;
   }
 
@@ -75,13 +96,19 @@ export class AuthService {
     }
 
     // 1. Verifikasi password lama
-    const isPasswordMatching = await bcrypt.compare(password_lama, user.password);
+    const isPasswordMatching = await bcrypt.compare(
+      password_lama,
+      user.password,
+    );
     if (!isPasswordMatching) {
       throw new BadRequestException('Password lama salah.');
     }
 
     // 2. Hash password baru
-    const hashedPassword = await bcrypt.hash(password_baru, await bcrypt.genSalt());
+    const hashedPassword = await bcrypt.hash(
+      password_baru,
+      await bcrypt.genSalt(),
+    );
 
     // 3. Update password di database
     await this.usersService.update(userId, { password: hashedPassword });

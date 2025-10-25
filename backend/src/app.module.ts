@@ -1,9 +1,10 @@
+// backend/src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_GUARD } from '@nestjs/core'; // 1. Import APP_GUARD
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; // 2. Import Throttler
-import { ServeStaticModule } from '@nestjs/serve-static'; // Tambahkan import ini
-import { join } from 'path'; // Tambahkan import ini
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -12,14 +13,19 @@ import { RolesModule } from './roles/roles.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { AssetsModule } from './assets/assets.module';
 import { AssetLifecycleModule } from './asset-lifecycle/asset-lifecycle.module';
+import { JwtService } from '@nestjs/jwt';
+import { SlidingThrottlerGuard } from './common/guards/sliding-throttler.guard';
+import { JwtStrategy } from './auth/jwt.strategy';
+import { LocalStrategy } from './auth/local.strategy';
 
 @Module({
   imports: [
-
-    ThrottlerModule.forRoot([{
-      ttl: 600000, // Waktu dalam detik untuk menghitung ulang permintaan
-      limit: 50,  // Izinkan 10 permintaan dari IP yang sama dalam 1 menit
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 1800, // Waktu dalam detik
+        limit: 50, // Jumlah maksimum permintaan dalam jangka waktu ttl
+      },
+    ]),
 
     // Tambahkan ServeStaticModule untuk melayani file statis
     ServeStaticModule.forRoot({
@@ -36,7 +42,7 @@ import { AssetLifecycleModule } from './asset-lifecycle/asset-lifecycle.module';
       database: 'db_aset',
       entities: [__dirname + '/**/*.entity.*'],
       synchronize: false,
-      autoLoadEntities: true, 
+      autoLoadEntities: true,
     }),
     UsersModule,
     AuthModule,
@@ -48,10 +54,13 @@ import { AssetLifecycleModule } from './asset-lifecycle/asset-lifecycle.module';
   controllers: [AppController],
   providers: [
     AppService,
+    JwtStrategy,
+    LocalStrategy,
+    SlidingThrottlerGuard,
 
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: SlidingThrottlerGuard,
     },
   ],
 })

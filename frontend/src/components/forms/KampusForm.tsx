@@ -10,14 +10,14 @@ interface KampusData {
 
 interface KampusFormProps {
   initialData?: KampusData | null;
-  onSubmit: (data: Omit<KampusData, 'id_kampus'>) => Promise<void>;
+  onSave: (data: Omit<KampusData, 'id_kampus'>) => Promise<void>;
   isLoading: boolean;
   onCancel?: () => void;
 }
 
 export const KampusForm: React.FC<KampusFormProps> = ({
   initialData,
-  onSubmit,
+  onSave,
   isLoading,
   onCancel,
 }) => {
@@ -73,7 +73,7 @@ export const KampusForm: React.FC<KampusFormProps> = ({
     
     if (validateForm()) {
       try {
-        await onSubmit(formData);
+        await onSave(formData);
       } catch (error) {
         console.error('Error submitting form:', error);
       }
@@ -84,7 +84,7 @@ export const KampusForm: React.FC<KampusFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="kode_kampus" className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-          Kode Kampus *
+          Kode Lokasi *
         </label>
         <input 
           type="text" 
@@ -113,7 +113,7 @@ export const KampusForm: React.FC<KampusFormProps> = ({
       
       <div>
         <label htmlFor="nama_kampus" className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-          Nama Kampus *
+          Nama Lokasi *
         </label>
         <input 
           type="text" 
