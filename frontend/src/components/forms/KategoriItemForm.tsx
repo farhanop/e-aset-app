@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useState, useEffect } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface KategoriData {
   id_kategori?: number;
@@ -34,13 +34,13 @@ export function KategoriItemForm({ initialData, onSave, onCancel }: FormProps) {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.nama_kategori.trim()) {
       newErrors.nama_kategori = "Nama kategori wajib diisi";
     } else if (formData.nama_kategori.length > 100) {
       newErrors.nama_kategori = "Nama kategori maksimal 100 karakter";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -48,30 +48,31 @@ export function KategoriItemForm({ initialData, onSave, onCancel }: FormProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    
+
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       onSave(formData as KategoriData);
     } catch (error: any) {
       console.error("Error saving kategori item:", error);
-      
+
       if (error.response?.status === 400) {
-        const errorMessage = error.response?.data?.message || 
-                          Object.values(error.response?.data?.errors || {}).join(", ") || 
-                          "Data tidak valid";
+        const errorMessage =
+          error.response?.data?.message ||
+          Object.values(error.response?.data?.errors || {}).join(", ") ||
+          "Data tidak valid";
         alert(`Gagal menyimpan data: ${errorMessage}`);
       } else if (error.response?.status === 409) {
         alert("Nama kategori sudah digunakan");
@@ -86,11 +87,30 @@ export function KategoriItemForm({ initialData, onSave, onCancel }: FormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label htmlFor="nama_kategori" className={`block text-sm font-medium ${
-          theme === "dark" ? "text-gray-300" : "text-gray-700"
-        }`}>
+        <label
+          htmlFor="nama_kategori"
+          className={`block text-sm font-medium ${
+            theme === "dark" ? "text-gray-300" : "text-gray-700"
+          }`}
+        >
           Nama Kategori <span className="text-red-500">*</span>
         </label>
+
+        {/* Catatan contoh input */}
+        <div
+          className={`text-xs mt-1 mb-2 ${
+            theme === "dark" ? "text-gray-400" : "text-gray-500"
+          }`}
+        >
+          <p>
+            Contoh input:{" "}
+            <span className="font-medium">
+              Elektronik, Furniture, ATK, Laboratorium, Kantor
+            </span>
+          </p>
+          <p>Maksimal 100 karakter</p>
+        </div>
+
         <div className="mt-1">
           <input
             id="nama_kategori"
@@ -99,25 +119,28 @@ export function KategoriItemForm({ initialData, onSave, onCancel }: FormProps) {
             value={formData.nama_kategori}
             onChange={handleChange}
             required
+            maxLength={100}
             className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.nama_kategori 
-                ? "border-red-500" 
-                : theme === "dark" 
-                  ? "border-gray-600 bg-gray-700 text-white" 
-                  : "border-gray-300"
+              errors.nama_kategori
+                ? "border-red-500"
+                : theme === "dark"
+                ? "border-gray-600 bg-gray-700 text-white"
+                : "border-gray-300"
             } px-3 py-2`}
-            placeholder="Masukkan nama kategori"
+            placeholder="Contoh: Elektronik"
           />
         </div>
         {errors.nama_kategori && (
-          <p className={`mt-1 text-sm ${
-            theme === "dark" ? "text-red-400" : "text-red-600"
-          }`}>
+          <p
+            className={`mt-1 text-sm ${
+              theme === "dark" ? "text-red-400" : "text-red-600"
+            }`}
+          >
             {errors.nama_kategori}
           </p>
         )}
       </div>
-      
+
       <div className="flex justify-end space-x-3 pt-5">
         <button
           type="button"
@@ -140,13 +163,33 @@ export function KategoriItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           {loading ? (
             <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
               Memproses...
             </>
-          ) : isEditMode ? "Simpan Perubahan" : "Buat Baru"}
+          ) : isEditMode ? (
+            "Simpan Perubahan"
+          ) : (
+            "Buat Baru"
+          )}
         </button>
       </div>
     </form>

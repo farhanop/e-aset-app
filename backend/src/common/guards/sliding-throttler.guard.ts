@@ -32,7 +32,7 @@ export class SlidingThrottlerGuard implements CanActivate, OnModuleDestroy {
   private userActivityCache = new Map<number, UserActivity[]>();
 
   // Konfigurasi waktu
-  private readonly INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 menit
+  private readonly INACTIVITY_TIMEOUT = 35 * 60 * 1000; //
   private readonly WARNING_THRESHOLD = 2 * 60 * 1000; // 2 menit sebelum timeout
   private readonly CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 menit
   private readonly MAX_SESSIONS_PER_USER = 3; // Maksimal 3 session per user

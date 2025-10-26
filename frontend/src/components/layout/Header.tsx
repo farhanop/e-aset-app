@@ -7,11 +7,11 @@ import {
   FaSun,
   FaMoon,
   FaBars,
-  FaChevronLeft
+  FaChevronLeft,
 } from "react-icons/fa";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
-import api from '../../api/axios';
+import api from "../../api/axios";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -19,7 +19,11 @@ interface HeaderProps {
   onBackClick?: () => void;
 }
 
-export function Header({ onMenuClick, showBackButton = false, onBackClick }: HeaderProps) {
+export function Header({
+  onMenuClick,
+  showBackButton = false,
+  onBackClick,
+}: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -31,14 +35,14 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
   // Update judul halaman saat lokasi berubah
   useEffect(() => {
     // Ambil segment terakhir dari path sebagai judul
-    const pathSegments = location.pathname.split('/').filter(Boolean);
+    const pathSegments = location.pathname.split("/").filter(Boolean);
     if (pathSegments.length > 0) {
       const lastSegment = pathSegments[pathSegments.length - 1];
       // Format judul: huruf pertama kapital, ganti dash dengan spasi
       const formattedTitle = lastSegment
-        .split('-')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
       setPageTitle(formattedTitle);
     } else {
       setPageTitle("Dashboard");
@@ -87,7 +91,7 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
         >
           <FaBars className="text-xl" />
         </button>
-        
+
         {/* Tombol kembali (jika diperlukan) */}
         {showBackButton && (
           <button
@@ -97,7 +101,7 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
             <FaChevronLeft className="text-xl" />
           </button>
         )}
-        
+
         <div className="flex flex-col">
           <h1 className="text-lg sm:text-xl font-bold text-white truncate max-w-[150px] sm:max-w-xs md:max-w-md">
             {pageTitle}
@@ -138,7 +142,11 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
           >
             {user?.foto_profil ? (
               <img
-                src={user.foto_profil.startsWith('http') ? user.foto_profil : `${api.defaults.baseURL || ''}${user.foto_profil}`}
+                src={
+                  user.foto_profil.startsWith("http")
+                    ? user.foto_profil
+                    : `${api.defaults.baseURL || ""}${user.foto_profil}`
+                }
                 alt="Avatar"
                 className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-white/20"
               />
@@ -153,8 +161,7 @@ export function Header({ onMenuClick, showBackButton = false, onBackClick }: Hea
               <span className="text-white font-medium truncate max-w-[100px] block">
                 {user ? user.nama_lengkap : "User"}
               </span>
-              <span className="text-xs text-blue-200 truncate max-w-[100px] block">
-              </span>
+              <span className="text-xs text-blue-200 truncate max-w-[100px] block"></span>
             </div>
           </button>
 

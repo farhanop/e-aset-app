@@ -13,9 +13,18 @@ import { UnitUtama } from 'src/entities/unit-utama.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Asset, MasterItem, Lokasi, UnitKerja, Gedung, Kampus, UnitUtama]), // Tambahkan Gedung
+    TypeOrmModule.forFeature([
+      Asset,
+      MasterItem,
+      Lokasi,
+      UnitKerja,
+      Gedung,
+      Kampus,
+      UnitUtama,
+    ]),
   ],
   controllers: [AssetsController],
   providers: [AssetsService],
+  exports: [AssetsService],
 })
 export class AssetsModule {}

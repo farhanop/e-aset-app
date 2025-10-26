@@ -1,11 +1,11 @@
-// src/pages/AssetCreatePage.tsx
+// src/components/asset/AssetEditPage.tsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Select, { StylesConfig } from "react-select";
-import api from "../api/axios";
-import { useTheme } from "../contexts/ThemeContext";
-import { QRCodeGenerator } from "./qr/QRCodeGenerator";
-import { Modal } from "../components/Modal";
+import api from "../../api/axios";
+import { useTheme } from "../../contexts/ThemeContext";
+import { QRCodeGenerator } from "../qr/QRCodeGenerator";
+import { Modal } from "../Modal";
 
 // ==================== INTERFACES ====================
 interface MasterItem {
@@ -56,6 +56,31 @@ interface UnitKerja {
   };
 }
 
+interface AssetDetail {
+  id_aset: number;
+  kode_aset: string;
+  id_item: number;
+  id_lokasi: number;
+  id_unit_kerja: number;
+  id_group: number | null;
+  merk: string | null;
+  foto_barang?: string | null;
+  foto_barang_mime?: string | null;
+  file_qrcode?: string | null;
+  file_dokumen?: string | null;
+  item?: any;
+  lokasi?: any;
+  unitKerja?: any;
+  group?: any;
+  tipe_model?: string | null;
+  tgl_perolehan?: string | null;
+  sumber_dana?: string | null;
+  nomor_urut?: string | null;
+  spesifikasi?: string | null;
+  status_aset?: string;
+  kondisi_terakhir?: string | null;
+}
+
 interface SelectOption {
   value: string;
   label: string;
@@ -63,8 +88,9 @@ interface SelectOption {
 }
 
 // ==================== MAIN COMPONENT ====================
-export function AssetCreatePage() {
+export function AssetEditPage() {
   const { theme } = useTheme();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   // Form State
@@ -79,7 +105,6 @@ export function AssetCreatePage() {
     spesifikasi: "",
     tgl_perolehan: "",
     sumber_dana: "",
-    jumlah: 1,
     status_aset: "Tersedia",
     kondisi_terakhir: "Baik",
   });
@@ -101,17 +126,18 @@ export function AssetCreatePage() {
   // Photo State
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string>("");
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string>("");
+  const [removePhoto, setRemovePhoto] = useState(false);
 
   // Document State
   const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState<string>("");
+  const [existingDocumentUrl, setExistingDocumentUrl] = useState<string>("");
+  const [removeDocument, setRemoveDocument] = useState(false);
 
   // QR & Success Modal State
   const [qrCodePreview, setQrCodePreview] = useState<string>("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [createdAssetId, setCreatedAssetId] = useState<number | null>(null);
-  const [createdAssetCount, setCreatedAssetCount] = useState<number>(0);
-  const [createdAssetPhotoUrl, setCreatedAssetPhotoUrl] = useState<string>("");
 
   // Select Options State
   const [itemOptions, setItemOptions] = useState<SelectOption[]>([]);
@@ -166,6 +192,65 @@ export function AssetCreatePage() {
       color: theme === "dark" ? "#9ca3af" : "#6b7280",
     }),
   };
+
+  // ==================== FETCH ASSET DATA ====================
+  useEffect(() => {
+    const fetchAssetData = async () => {
+      if (!id) return;
+
+      setLoading(true);
+      try {
+        const response = await api.get(`/assets/${id}`);
+        const assetData: AssetDetail = response.data;
+
+        // Set form data with existing values
+        setFormData({
+          id_item: assetData.id_item.toString(),
+          id_kampus: assetData.lokasi?.gedung?.id_kampus?.toString() || "",
+          id_gedung: assetData.lokasi?.id_gedung?.toString() || "",
+          id_lokasi: assetData.id_lokasi.toString(),
+          id_unit_kerja: assetData.id_unit_kerja.toString(),
+          merk: assetData.merk || "",
+          tipe_model: assetData.tipe_model || "",
+          spesifikasi: assetData.spesifikasi || "",
+          tgl_perolehan: assetData.tgl_perolehan
+            ? new Date(assetData.tgl_perolehan).toISOString().split("T")[0]
+            : "",
+          sumber_dana: assetData.sumber_dana || "",
+          status_aset: assetData.status_aset || "Tersedia",
+          kondisi_terakhir: assetData.kondisi_terakhir || "Baik",
+        });
+
+        // Set existing photo and document URLs
+        if (assetData.foto_barang) {
+          setExistingPhotoUrl(assetData.foto_barang);
+        }
+
+        if (assetData.file_dokumen) {
+          setExistingDocumentUrl(assetData.file_dokumen);
+          setDocumentPreviewUrl(
+            assetData.file_dokumen.split("/").pop() || "Dokumen.pdf"
+          );
+        }
+
+        // Set QR code preview
+        setQrCodePreview(assetData.kode_aset);
+
+        setError("");
+      } catch (err: any) {
+        console.error("Gagal mengambil data aset:", err);
+        setError(
+          `Gagal memuat data aset: ${
+            err.response?.data?.message || err.message || "Unknown error"
+          }`
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssetData();
+  }, [id]);
 
   // ==================== FETCH MASTER DATA ====================
   useEffect(() => {
@@ -387,7 +472,7 @@ export function AssetCreatePage() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "jumlah" ? Math.max(1, parseInt(value) || 1) : value,
+      [name]: value,
     }));
 
     if (fieldErrors[name]) {
@@ -429,8 +514,22 @@ export function AssetCreatePage() {
 
     setError("");
     setSelectedPhoto(file);
+    setRemovePhoto(false); // Reset remove flag when new photo is selected
     const url = URL.createObjectURL(file);
     setPhotoPreviewUrl(url);
+  };
+
+  const handleRemovePhoto = () => {
+    if (photoPreviewUrl) {
+      try {
+        URL.revokeObjectURL(photoPreviewUrl);
+      } catch (err) {
+        console.error("Failed to revoke URL:", err);
+      }
+    }
+    setSelectedPhoto(null);
+    setPhotoPreviewUrl("");
+    setRemovePhoto(true);
   };
 
   // ==================== DOCUMENT HANDLER ====================
@@ -459,7 +558,14 @@ export function AssetCreatePage() {
 
     setError("");
     setSelectedDocument(file);
+    setRemoveDocument(false); // Reset remove flag when new document is selected
     setDocumentPreviewUrl(file.name);
+  };
+
+  const handleRemoveDocument = () => {
+    setSelectedDocument(null);
+    setDocumentPreviewUrl("");
+    setRemoveDocument(true);
   };
 
   // ==================== PREVIEW HANDLER ====================
@@ -478,10 +584,6 @@ export function AssetCreatePage() {
       validationErrors.id_unit_kerja = "Unit penanggung jawab wajib dipilih";
     if (!formData.tgl_perolehan)
       validationErrors.tgl_perolehan = "Tanggal perolehan wajib diisi";
-    if (!formData.jumlah || formData.jumlah < 1)
-      validationErrors.jumlah = "Jumlah harus lebih dari 0";
-    if (!selectedPhoto)
-      validationErrors.foto_barang = "Foto barang wajib diupload";
 
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors);
@@ -518,18 +620,19 @@ export function AssetCreatePage() {
         lokasi: selectedLokasi,
         unitKerja: selectedUnitKerja,
         formData,
-        jumlah: Number(formData.jumlah),
       };
       setPreviewData(preview);
 
       // Generate kode aset untuk preview
-      const kodeAset = `${selectedKampus.kode_kampus}${
-        selectedGedung.kode_gedung
-      }${selectedLokasi.lantai}${selectedLokasi.kode_ruangan}/${
-        selectedUnitKerja.unitUtama?.kode_unit_utama
-      }.${selectedUnitKerja.kode_unit}/${selectedItem.kode_item}.1/${new Date(
-        formData.tgl_perolehan
-      ).getFullYear()}`;
+      const kodeAset =
+        qrCodePreview ||
+        `${selectedKampus.kode_kampus}${selectedGedung.kode_gedung}${
+          selectedLokasi.lantai
+        }${selectedLokasi.kode_ruangan}/${
+          selectedUnitKerja.unitUtama?.kode_unit_utama
+        }.${selectedUnitKerja.kode_unit}/${selectedItem.kode_item}.1/${new Date(
+          formData.tgl_perolehan
+        ).getFullYear()}`;
       setQrCodePreview(kodeAset);
     }
   };
@@ -556,10 +659,6 @@ export function AssetCreatePage() {
       validationErrors.id_unit_kerja = "Unit penanggung jawab wajib dipilih";
     if (!formData.tgl_perolehan)
       validationErrors.tgl_perolehan = "Tanggal perolehan wajib diisi";
-    if (!formData.jumlah || formData.jumlah < 1)
-      validationErrors.jumlah = "Jumlah harus lebih dari 0";
-    if (!selectedPhoto)
-      validationErrors.foto_barang = "Foto barang wajib diupload";
 
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors);
@@ -628,31 +727,22 @@ export function AssetCreatePage() {
         spesifikasi: formData.spesifikasi || null,
         tgl_perolehan: formData.tgl_perolehan,
         sumber_dana: formData.sumber_dana || null,
-        jumlah: Number(formData.jumlah),
         status_aset: formData.status_aset,
         kondisi_terakhir: formData.kondisi_terakhir,
-        foto_barang: fotoPath || null,
-        file_dokumen: dokumenPath || null,
+        foto_barang: fotoPath || (removePhoto ? null : undefined),
+        file_dokumen: dokumenPath || (removeDocument ? null : undefined),
       };
 
       console.log("📤 Sending payload:", payload);
 
-      const response = await api.post("/assets", payload);
+      const response = await api.put(`/assets/${id}`, payload);
 
       console.log("✅ Response:", response.data);
-
-      // Ambil data aset pertama
-      const firstAsset = response.data.data?.[0];
-      if (firstAsset) {
-        setCreatedAssetId(firstAsset.id_aset);
-        setCreatedAssetPhotoUrl(firstAsset.foto_barang || "");
-      }
-      setCreatedAssetCount(Number(formData.jumlah));
 
       // Tampilkan modal sukses
       setShowSuccessModal(true);
     } catch (error: any) {
-      console.error("❌ Gagal membuat aset:", error);
+      console.error("❌ Gagal mengupdate aset:", error);
       console.error("Error response:", error.response?.data);
 
       if (error.response?.status === 400) {
@@ -677,7 +767,9 @@ export function AssetCreatePage() {
       } else if (error.response?.status === 500) {
         setError("Terjadi kesalahan server. Silakan coba lagi.");
       } else {
-        setError("Gagal membuat aset. Periksa koneksi internet dan coba lagi.");
+        setError(
+          "Gagal mengupdate aset. Periksa koneksi internet dan coba lagi."
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -686,34 +778,9 @@ export function AssetCreatePage() {
 
   // ==================== MODAL HANDLERS ====================
   const handleViewAsset = () => {
-    if (createdAssetId) {
-      navigate(`/assets/${createdAssetId}`);
+    if (id) {
+      navigate(`/assets/${id}`);
     }
-  };
-
-  const handleCreateAnother = () => {
-    setFormData({
-      id_item: "",
-      id_kampus: "",
-      id_gedung: "",
-      id_lokasi: "",
-      id_unit_kerja: "",
-      merk: "",
-      tipe_model: "",
-      spesifikasi: "",
-      tgl_perolehan: "",
-      sumber_dana: "",
-      jumlah: 1,
-      status_aset: "Tersedia",
-      kondisi_terakhir: "Baik",
-    });
-    setPreviewData(null);
-    setQrCodePreview("");
-    setSelectedPhoto(null);
-    setSelectedDocument(null);
-    setPhotoPreviewUrl("");
-    setDocumentPreviewUrl("");
-    setShowSuccessModal(false);
   };
 
   // ==================== LOADING STATE ====================
@@ -731,7 +798,7 @@ export function AssetCreatePage() {
               theme === "dark" ? "text-gray-400" : "text-gray-600"
             }`}
           >
-            Memuat data master...
+            Memuat data aset...
           </p>
         </div>
       </div>
@@ -755,18 +822,18 @@ export function AssetCreatePage() {
                   theme === "dark" ? "text-white" : "text-gray-800"
                 }`}
               >
-                Pendaftaran Aset Baru
+                Edit Aset
               </h1>
               <p
                 className={`${
                   theme === "dark" ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                Daftarkan aset baru ke dalam sistem inventaris
+                Edit informasi aset yang sudah terdaftar
               </p>
             </div>
             <button
-              onClick={() => navigate("/assets")}
+              onClick={() => navigate(`/assets/${id}`)}
               className={`px-4 py-2 rounded-lg shadow hover:shadow-md transition-all duration-200 flex items-center gap-2 ${
                 theme === "dark"
                   ? "bg-gray-700 text-white hover:bg-gray-600"
@@ -818,7 +885,7 @@ export function AssetCreatePage() {
                     theme === "dark" ? "text-red-400" : "text-red-700"
                   }`}
                 >
-                  Gagal membuat aset
+                  Gagal mengupdate aset
                 </p>
                 <p
                   className={`text-sm mt-1 ${
@@ -1108,7 +1175,7 @@ export function AssetCreatePage() {
                 Informasi Pengadaan
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Tanggal Perolehan */}
                 <div>
                   <label
@@ -1167,54 +1234,6 @@ export function AssetCreatePage() {
                     placeholder="Contoh: APBN, APBD, Mandiri"
                   />
                 </div>
-
-                {/* Jumlah */}
-                <div>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      theme === "dark" ? "text-gray-300" : "text-gray-700"
-                    }`}
-                  >
-                    Jumlah (Input Massal){" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="jumlah"
-                    value={formData.jumlah}
-                    onChange={handleChange}
-                    min="1"
-                    max="100"
-                    required
-                    className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                      fieldErrors.jumlah
-                        ? theme === "dark"
-                          ? "border-red-500 bg-red-900/20 text-red-200"
-                          : "border-red-300 bg-red-50 text-red-900"
-                        : theme === "dark"
-                        ? "border-gray-600 bg-gray-700 text-white"
-                        : "border-gray-300 bg-white text-gray-900"
-                    }`}
-                  />
-                  {fieldErrors.jumlah && (
-                    <p
-                      className={`mt-1 text-sm ${
-                        theme === "dark" ? "text-red-400" : "text-red-600"
-                      }`}
-                    >
-                      {fieldErrors.jumlah}
-                    </p>
-                  )}
-                  <p
-                    className={`mt-1 text-sm ${
-                      theme === "dark" ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    {formData.jumlah > 1
-                      ? `Akan dibuat ${formData.jumlah} aset dengan kode berurutan`
-                      : "Akan dibuat 1 aset"}
-                  </p>
-                </div>
               </div>
             </div>
 
@@ -1252,7 +1271,9 @@ export function AssetCreatePage() {
                   >
                     <option value="Tersedia">Tersedia</option>
                     <option value="Dipinjam">Dipinjam</option>
-                    <option value="Diperbaiki">Diperbaiki</option>
+                    <option value="Dalam Perbaikan">Dalam Perbaikan</option>
+                    <option value="Rusak">Rusak</option>
+                    <option value="Hilang">Hilang</option>
                     <option value="Dihapuskan">Dihapuskan</option>
                   </select>
                 </div>
@@ -1293,9 +1314,43 @@ export function AssetCreatePage() {
                     theme === "dark" ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
-                  Foto Barang <span className="text-red-500">*</span>
+                  Foto Barang
                 </label>
 
+                {/* Existing Photo */}
+                {existingPhotoUrl && !removePhoto && !selectedPhoto && (
+                  <div className="mb-4 flex justify-center">
+                    <div className="relative">
+                      <img
+                        src={existingPhotoUrl}
+                        alt="Existing foto"
+                        className="max-h-64 max-w-full object-contain rounded-lg shadow-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload New Photo */}
                 <div className="flex flex-col items-center justify-center w-full">
                   <label
                     htmlFor="dropzone-file"
@@ -1317,7 +1372,7 @@ export function AssetCreatePage() {
                           stroke="currentColor"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth="2"
+                          strokeWidth={2}
                           d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
                         />
                       </svg>
@@ -1335,7 +1390,6 @@ export function AssetCreatePage() {
                       accept="image/*"
                       onChange={handlePhotoChange}
                       className="hidden"
-                      required
                     />
                   </label>
 
@@ -1397,6 +1451,57 @@ export function AssetCreatePage() {
                   Dokumen Pengadaan
                 </label>
 
+                {/* Existing Document */}
+                {existingDocumentUrl &&
+                  !removeDocument &&
+                  !selectedDocument && (
+                    <div className="mb-4 p-3 rounded-lg border flex items-center">
+                      <svg
+                        className="w-8 h-8 mr-3 text-red-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <div>
+                        <p className="font-medium">
+                          {existingDocumentUrl.split("/").pop() ||
+                            "Dokumen.pdf"}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Dokumen pengadaan
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveDocument}
+                        className="ml-auto text-red-500 hover:text-red-700"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                {/* Upload New Document */}
                 <div className="flex flex-col items-center justify-center w-full">
                   <label
                     htmlFor="dropzone-document"
@@ -1418,7 +1523,7 @@ export function AssetCreatePage() {
                           stroke="currentColor"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth="2"
+                          strokeWidth={2}
                           d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
                         />
                       </svg>
@@ -1453,7 +1558,7 @@ export function AssetCreatePage() {
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth="2"
+                        strokeWidth={2}
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                       ></path>
                     </svg>
@@ -1527,36 +1632,14 @@ export function AssetCreatePage() {
                           theme === "dark" ? "text-gray-400" : "text-gray-600"
                         }`}
                       >
-                        Format kode aset yang akan dihasilkan:
+                        Kode aset:
                       </div>
                       <div
                         className={`font-mono text-sm p-2 rounded ${
                           theme === "dark" ? "bg-gray-800" : "bg-gray-100"
                         }`}
                       >
-                        {previewData.kampus.kode_kampus}
-                        {previewData.gedung.kode_gedung}
-                        {previewData.lokasi.lantai}
-                        {previewData.lokasi.kode_ruangan}/
-                        {previewData.unitKerja.unitUtama?.kode_unit_utama}.
-                        {previewData.unitKerja.kode_unit}/
-                        {previewData.item.kode_item}.
-                        {previewData.jumlah > 1
-                          ? `[1-${previewData.jumlah}]`
-                          : "1"}
-                        /
-                        {new Date(
-                          previewData.formData.tgl_perolehan
-                        ).getFullYear()}
-                      </div>
-                      <div
-                        className={`mt-2 text-sm ${
-                          theme === "dark" ? "text-gray-400" : "text-gray-600"
-                        }`}
-                      >
-                        {previewData.jumlah > 1
-                          ? `Akan dibuat ${previewData.jumlah} aset dengan kode berurutan`
-                          : "Akan dibuat 1 aset dengan kode di atas"}
+                        {qrCodePreview}
                       </div>
                     </div>
 
@@ -1570,13 +1653,14 @@ export function AssetCreatePage() {
                       </div>
                       <div className="flex justify-center">
                         <div className="space-y-2">
-                          {photoPreviewUrl && (
-                            <img
-                              src={photoPreviewUrl}
-                              alt="Preview foto"
-                              className="h-28 w-28 object-cover rounded shadow-sm mx-auto"
-                            />
-                          )}
+                          {(photoPreviewUrl || existingPhotoUrl) &&
+                            !removePhoto && (
+                              <img
+                                src={photoPreviewUrl || existingPhotoUrl}
+                                alt="Preview foto"
+                                className="h-28 w-28 object-cover rounded shadow-sm mx-auto"
+                              />
+                            )}
                           {qrCodePreview && (
                             <QRCodeGenerator
                               value={qrCodePreview}
@@ -1600,7 +1684,7 @@ export function AssetCreatePage() {
             >
               <button
                 type="button"
-                onClick={() => navigate("/assets")}
+                onClick={() => navigate(`/assets/${id}`)}
                 disabled={isSubmitting}
                 className={`px-6 py-2 rounded-lg border transition-colors ${
                   theme === "dark"
@@ -1625,9 +1709,7 @@ export function AssetCreatePage() {
                     Menyimpan...
                   </>
                 ) : (
-                  `Simpan Aset ${
-                    formData.jumlah > 1 ? `(${formData.jumlah})` : ""
-                  }`
+                  "Simpan Perubahan"
                 )}
               </button>
             </div>
@@ -1640,7 +1722,7 @@ export function AssetCreatePage() {
         <Modal
           isOpen={showSuccessModal}
           onClose={() => setShowSuccessModal(false)}
-          title="Aset Berhasil Dibuat"
+          title="Aset Berhasil Diperbarui"
         >
           <div className="p-4">
             <div className="text-center mb-6">
@@ -1670,43 +1752,26 @@ export function AssetCreatePage() {
                   theme === "dark" ? "text-gray-200" : "text-gray-900"
                 }`}
               >
-                Pendaftaran Aset Berhasil!
+                Update Aset Berhasil!
               </h3>
               <div
                 className={`mt-2 ${
                   theme === "dark" ? "text-gray-400" : "text-gray-500"
                 }`}
               >
-                <p>
-                  {createdAssetCount > 1
-                    ? `${createdAssetCount} aset berhasil didaftarkan ke dalam sistem.`
-                    : "1 aset berhasil didaftarkan ke dalam sistem."}
-                </p>
-                <p className="mt-1">
-                  QR Code telah dibuat secara otomatis untuk setiap aset.
-                </p>
-                {createdAssetPhotoUrl && (
-                  <div className="mt-4">
-                    <div className="text-sm mb-1">Foto Barang:</div>
-                    <img
-                      src={createdAssetPhotoUrl}
-                      alt="Foto aset"
-                      className="mx-auto h-28 w-28 object-cover rounded"
-                    />
-                  </div>
-                )}
+                <p>Informasi aset telah berhasil diperbarui.</p>
               </div>
             </div>
             <div className="flex justify-center space-x-3">
               <button
-                onClick={handleCreateAnother}
+                onClick={() => setShowSuccessModal(false)}
                 className={`px-4 py-2 border rounded-md transition-colors ${
                   theme === "dark"
                     ? "border-gray-600 text-gray-300 hover:bg-gray-700"
                     : "border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                Buat Aset Lain
+                Tutup
               </button>
               <button
                 onClick={handleViewAsset}

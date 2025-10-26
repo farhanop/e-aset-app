@@ -6,8 +6,8 @@ import { Footer } from "./Footer";
 import { motion } from "framer-motion";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useEffect, useState } from "react";
-import { useAuth } from '../../contexts/AuthContext';
-import { useIdleTimer } from '../../hooks/useIdleTimer';
+import { useAuth } from "../../contexts/AuthContext";
+import { useIdleTimer } from "../../hooks/useIdleTimer";
 
 export function MainLayout() {
   const { theme } = useTheme();
@@ -45,14 +45,11 @@ export function MainLayout() {
     >
       <div className="flex flex-1 overflow-hidden">
         {/* Hanya satu Sidebar component yang menangani desktop dan mobile */}
-        <Sidebar 
-          isOpen={sidebarOpen} 
-          onClose={() => setSidebarOpen(false)} 
-        />
-        
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header 
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+          <Header
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
             // Tambahkan prop untuk menampilkan tombol kembali jika diperlukan
             showBackButton={location.pathname !== "/dashboard"}
             onBackClick={() => navigate(-1)}

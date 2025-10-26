@@ -14,7 +14,7 @@ import {
   FaSlidersH,
   FaUserShield,
   FaChartBar,
-  FaTimes
+  FaTimes,
 } from "react-icons/fa";
 import { useTheme } from "../../contexts/ThemeContext";
 
@@ -28,7 +28,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const savedState = localStorage.getItem("sidebarCollapsed");
     return savedState ? JSON.parse(savedState) : false;
   });
-  
+
   const [isHovered, setIsHovered] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const location = useLocation();
@@ -58,7 +58,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/dashboard", icon: <FaTachometerAlt />, label: "Dashboard" },
     { path: "/master-data", icon: <FaDatabase />, label: "Data Master" },
     { path: "/assets", icon: <FaBox />, label: "Manajemen Aset" },
-    { path: "/reports/by-location", icon: <FaChartBar />, label: "Laporan per Ruangan" },
+    {
+      path: "/reports/laporan-berdasarkan-lokasi",
+      icon: <FaChartBar />,
+      label: "Laporan per Ruangan",
+    },
   ];
 
   const settingsItems = [
@@ -119,9 +123,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     : "bg-white/10 border-blue-400/20 hover:bg-white/20"
                 }`}
               >
-                <img 
-                  src="/uigm.png" 
-                  alt="Universitas IGM" 
+                <img
+                  src="/uigm.png"
+                  alt="Universitas IGM"
                   className="w-8 h-8 object-contain"
                 />
               </div>
@@ -150,13 +154,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className={`
                   group relative flex items-center p-3 my-1 rounded-xl
                   transition-all duration-300 ease-out overflow-hidden
-                  ${isActive(item.path)
-                    ? theme === "dark"
-                      ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
-                      : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
-                    : theme === "dark"
-                    ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
-                    : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
+                  ${
+                    isActive(item.path)
+                      ? theme === "dark"
+                        ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
+                        : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
+                      : theme === "dark"
+                      ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
+                      : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
                   }
                   hover:scale-105 hover:shadow-xl
                 `}
@@ -174,11 +179,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <span
                   className={`
                   text-lg transition-all duration-300
-                  ${isActive(item.path)
-                    ? "text-yellow-300"
-                    : theme === "dark"
-                    ? "text-gray-300"
-                    : "text-blue-200"
+                  ${
+                    isActive(item.path)
+                      ? "text-yellow-300"
+                      : theme === "dark"
+                      ? "text-gray-300"
+                      : "text-blue-200"
                   }
                   group-hover:text-white
                   ${isCollapsed ? "mx-auto" : ""}
@@ -192,11 +198,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <span
                     className={`
                     ml-3 font-medium transition-all duration-300
-                    ${isActive(item.path)
-                      ? "text-white"
-                      : theme === "dark"
-                      ? "text-gray-300"
-                      : "text-blue-100"
+                    ${
+                      isActive(item.path)
+                        ? "text-white"
+                        : theme === "dark"
+                        ? "text-gray-300"
+                        : "text-blue-100"
                     }
                     group-hover:text-white
                   `}
@@ -215,13 +222,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               className={`
                 group relative flex flex-col rounded-xl
                 transition-all duration-300 ease-out
-                ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
-                  ? theme === "dark"
-                    ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
-                    : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
-                  : theme === "dark"
-                  ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
-                  : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
+                ${
+                  isSettingsOpen ||
+                  settingsItems.some((item) => isActive(item.path))
+                    ? theme === "dark"
+                      ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
+                      : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
+                    : theme === "dark"
+                    ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
+                    : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
                 }
                 overflow-hidden
               `}
@@ -237,7 +246,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 `}
               >
                 {/* Active Indicator */}
-                {(isSettingsOpen || settingsItems.some(item => isActive(item.path))) && (
+                {(isSettingsOpen ||
+                  settingsItems.some((item) => isActive(item.path))) && (
                   <div
                     className={`absolute inset-0 bg-gradient-to-r from-white/10 to-transparent transition-colors duration-300 ${
                       theme === "dark" ? "from-white/5" : "from-white/10"
@@ -249,11 +259,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <span
                   className={`
                   text-lg transition-all duration-300
-                  ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
-                    ? "text-yellow-300"
-                    : theme === "dark"
-                    ? "text-gray-300"
-                    : "text-blue-200"
+                  ${
+                    isSettingsOpen ||
+                    settingsItems.some((item) => isActive(item.path))
+                      ? "text-yellow-300"
+                      : theme === "dark"
+                      ? "text-gray-300"
+                      : "text-blue-200"
                   }
                   group-hover:text-white
                   ${isCollapsed ? "mx-auto" : ""}
@@ -268,11 +280,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <span
                       className={`
                       ml-3 font-medium transition-all duration-300
-                      ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
-                        ? "text-white"
-                        : theme === "dark"
-                        ? "text-gray-300"
-                        : "text-blue-100"
+                      ${
+                        isSettingsOpen ||
+                        settingsItems.some((item) => isActive(item.path))
+                          ? "text-white"
+                          : theme === "dark"
+                          ? "text-gray-300"
+                          : "text-blue-100"
                       }
                       group-hover:text-white
                     `}
@@ -299,13 +313,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       className={`
                         group relative flex items-center p-2 my-1 rounded-lg
                         transition-all duration-300 ease-out
-                        ${isActive(item.path)
-                          ? theme === "dark"
-                            ? "bg-gray-600/50 shadow-inner border-l-2 border-yellow-400"
-                            : "bg-blue-600/50 shadow-inner border-l-2 border-yellow-400"
-                          : theme === "dark"
-                          ? "bg-gray-700/30 hover:bg-gray-600/50"
-                          : "bg-blue-700/30 hover:bg-blue-600/50"
+                        ${
+                          isActive(item.path)
+                            ? theme === "dark"
+                              ? "bg-gray-600/50 shadow-inner border-l-2 border-yellow-400"
+                              : "bg-blue-600/50 shadow-inner border-l-2 border-yellow-400"
+                            : theme === "dark"
+                            ? "bg-gray-700/30 hover:bg-gray-600/50"
+                            : "bg-blue-700/30 hover:bg-blue-600/50"
                         }
                         hover:scale-105
                         overflow-hidden
@@ -315,11 +330,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span
                         className={`
                         text-sm transition-all duration-300
-                        ${isActive(item.path)
-                          ? "text-yellow-300"
-                          : theme === "dark"
-                          ? "text-gray-300"
-                          : "text-blue-200"
+                        ${
+                          isActive(item.path)
+                            ? "text-yellow-300"
+                            : theme === "dark"
+                            ? "text-gray-300"
+                            : "text-blue-200"
                         }
                         group-hover:text-white
                       `}
@@ -331,11 +347,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span
                         className={`
                         ml-3 text-sm font-medium transition-all duration-300
-                        ${isActive(item.path)
-                          ? "text-white"
-                          : theme === "dark"
-                          ? "text-gray-300"
-                          : "text-blue-100"
+                        ${
+                          isActive(item.path)
+                            ? "text-white"
+                            : theme === "dark"
+                            ? "text-gray-300"
+                            : "text-blue-100"
                         }
                         group-hover:text-white
                       `}
@@ -401,7 +418,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 : "bg-gradient-to-b from-blue-700 to-blue-600"
             }`}
           ></div>
-          
+
           {/* Icon */}
           <div className="relative z-10 transform transition-transform duration-500 group-hover:scale-125">
             {isCollapsed ? (
@@ -429,11 +446,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && (
         <div className="md:hidden fixed inset-0 z-50">
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
-          
+
           {/* Sidebar Panel */}
           <div className="fixed inset-y-0 left-0 max-w-xs w-full">
             <div
@@ -466,16 +483,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                           : "bg-white/10 border-blue-400/20"
                       }`}
                     >
-                      <img 
-                        src="/uigm.png" 
-                        alt="Universitas IGM" 
+                      <img
+                        src="/uigm.png"
+                        alt="Universitas IGM"
                         className="w-8 h-8 object-contain"
                       />
                     </div>
                     {!isCollapsed && (
                       <div className="text-center">
-                        <h2 className="text-lg font-bold text-white">UNIVERSITAS</h2>
-                        <h3 className="text-md font-semibold text-yellow-400">IGM</h3>
+                        <h2 className="text-lg font-bold text-white">
+                          UNIVERSITAS
+                        </h2>
+                        <h3 className="text-md font-semibold text-yellow-400">
+                          IGM
+                        </h3>
                         <p
                           className={`text-xs mt-1 transition-colors duration-300 ${
                             theme === "dark" ? "text-gray-300" : "text-blue-200"
@@ -486,7 +507,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Tombol close untuk mobile */}
                   <button
                     onClick={onClose}
@@ -510,13 +531,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       className={`
                         group relative flex items-center p-3 my-1 rounded-xl
                         transition-all duration-300 ease-out overflow-hidden
-                        ${isActive(item.path)
-                          ? theme === "dark"
-                            ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
-                            : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
-                          : theme === "dark"
-                          ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
-                          : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
+                        ${
+                          isActive(item.path)
+                            ? theme === "dark"
+                              ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
+                              : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
+                            : theme === "dark"
+                            ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
+                            : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
                         }
                         hover:scale-105 hover:shadow-xl
                       `}
@@ -534,11 +556,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span
                         className={`
                         text-lg transition-all duration-300
-                        ${isActive(item.path)
-                          ? "text-yellow-300"
-                          : theme === "dark"
-                          ? "text-gray-300"
-                          : "text-blue-200"
+                        ${
+                          isActive(item.path)
+                            ? "text-yellow-300"
+                            : theme === "dark"
+                            ? "text-gray-300"
+                            : "text-blue-200"
                         }
                         group-hover:text-white
                         ${isCollapsed ? "mx-auto" : ""}
@@ -552,11 +575,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <span
                           className={`
                           ml-3 font-medium transition-all duration-300
-                          ${isActive(item.path)
-                            ? "text-white"
-                            : theme === "dark"
-                            ? "text-gray-300"
-                            : "text-blue-100"
+                          ${
+                            isActive(item.path)
+                              ? "text-white"
+                              : theme === "dark"
+                              ? "text-gray-300"
+                              : "text-blue-100"
                           }
                           group-hover:text-white
                         `}
@@ -575,13 +599,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className={`
                       group relative flex flex-col rounded-xl
                       transition-all duration-300 ease-out
-                      ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
-                        ? theme === "dark"
-                          ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
-                          : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
-                        : theme === "dark"
-                        ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
-                        : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
+                      ${
+                        isSettingsOpen ||
+                        settingsItems.some((item) => isActive(item.path))
+                          ? theme === "dark"
+                            ? "bg-gradient-to-r from-gray-700 to-gray-600 shadow-lg shadow-gray-500/25 border-l-4 border-yellow-400"
+                            : "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/25 border-l-4 border-yellow-400"
+                          : theme === "dark"
+                          ? "bg-gray-800/30 hover:bg-gray-700/50 border-l-4 border-transparent hover:border-gray-400"
+                          : "bg-blue-800/30 hover:bg-blue-700/50 border-l-4 border-transparent hover:border-blue-400"
                       }
                       overflow-hidden
                     `}
@@ -597,7 +623,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       `}
                     >
                       {/* Active Indicator */}
-                      {(isSettingsOpen || settingsItems.some(item => isActive(item.path))) && (
+                      {(isSettingsOpen ||
+                        settingsItems.some((item) => isActive(item.path))) && (
                         <div
                           className={`absolute inset-0 bg-gradient-to-r from-white/10 to-transparent transition-colors duration-300 ${
                             theme === "dark" ? "from-white/5" : "from-white/10"
@@ -609,11 +636,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span
                         className={`
                         text-lg transition-all duration-300
-                        ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
-                          ? "text-yellow-300"
-                          : theme === "dark"
-                          ? "text-gray-300"
-                          : "text-blue-200"
+                        ${
+                          isSettingsOpen ||
+                          settingsItems.some((item) => isActive(item.path))
+                            ? "text-yellow-300"
+                            : theme === "dark"
+                            ? "text-gray-300"
+                            : "text-blue-200"
                         }
                         group-hover:text-white
                         ${isCollapsed ? "mx-auto" : ""}
@@ -628,11 +657,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                           <span
                             className={`
                             ml-3 font-medium transition-all duration-300
-                            ${isSettingsOpen || settingsItems.some(item => isActive(item.path))
-                              ? "text-white"
-                              : theme === "dark"
-                              ? "text-gray-300"
-                              : "text-blue-100"
+                            ${
+                              isSettingsOpen ||
+                              settingsItems.some((item) => isActive(item.path))
+                                ? "text-white"
+                                : theme === "dark"
+                                ? "text-gray-300"
+                                : "text-blue-100"
                             }
                             group-hover:text-white
                           `}
@@ -660,13 +691,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             className={`
                               group relative flex items-center p-2 my-1 rounded-lg
                               transition-all duration-300 ease-out
-                              ${isActive(item.path)
-                                ? theme === "dark"
-                                  ? "bg-gray-600/50 shadow-inner border-l-2 border-yellow-400"
-                                  : "bg-blue-600/50 shadow-inner border-l-2 border-yellow-400"
-                                : theme === "dark"
-                                ? "bg-gray-700/30 hover:bg-gray-600/50"
-                                : "bg-blue-700/30 hover:bg-blue-600/50"
+                              ${
+                                isActive(item.path)
+                                  ? theme === "dark"
+                                    ? "bg-gray-600/50 shadow-inner border-l-2 border-yellow-400"
+                                    : "bg-blue-600/50 shadow-inner border-l-2 border-yellow-400"
+                                  : theme === "dark"
+                                  ? "bg-gray-700/30 hover:bg-gray-600/50"
+                                  : "bg-blue-700/30 hover:bg-blue-600/50"
                               }
                               hover:scale-105
                               overflow-hidden
@@ -676,11 +708,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <span
                               className={`
                               text-sm transition-all duration-300
-                              ${isActive(item.path)
-                                ? "text-yellow-300"
-                                : theme === "dark"
-                                ? "text-gray-300"
-                                : "text-blue-200"
+                              ${
+                                isActive(item.path)
+                                  ? "text-yellow-300"
+                                  : theme === "dark"
+                                  ? "text-gray-300"
+                                  : "text-blue-200"
                               }
                               group-hover:text-white
                             `}
@@ -692,11 +725,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <span
                               className={`
                               ml-3 text-sm font-medium transition-all duration-300
-                              ${isActive(item.path)
-                                ? "text-white"
-                                : theme === "dark"
-                                ? "text-gray-300"
-                                : "text-blue-100"
+                              ${
+                                isActive(item.path)
+                                  ? "text-white"
+                                  : theme === "dark"
+                                  ? "text-gray-300"
+                                  : "text-blue-100"
                               }
                               group-hover:text-white
                             `}
