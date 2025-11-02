@@ -14,21 +14,18 @@ export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false); // State untuk mengontrol sidebar di mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Timeout diatur ke 30 menit (dalam milidetik)
   if (isAuthenticated) {
     useIdleTimer(30 * 60 * 1000);
   }
 
-  // Redirect to dashboard only once when at root path "/"
   useEffect(() => {
     if (location.pathname === "/") {
       navigate("/dashboard", { replace: true });
     }
   }, [location.pathname, navigate]);
 
-  // Menutup sidebar saat berpindah halaman di mobile
   useEffect(() => {
     if (sidebarOpen) {
       setSidebarOpen(false);
@@ -36,41 +33,41 @@ export function MainLayout() {
   }, [location.pathname, sidebarOpen]);
 
   return (
-    <div
-      className={`flex flex-col h-screen transition-colors duration-300 ${
-        theme === "dark"
-          ? "bg-gradient-to-br from-gray-900 to-gray-800 text-white"
-          : "bg-gradient-to-br from-blue-50 to-gray-100 text-gray-900"
-      }`}
-    >
-      <div className="flex flex-1 overflow-hidden">
-        {/* Hanya satu Sidebar component yang menangani desktop dan mobile */}
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar - Sticky */}
+      <div className="flex-shrink-0 sticky top-0 h-screen z-30">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-            // Tambahkan prop untuk menampilkan tombol kembali jika diperlukan
-            showBackButton={location.pathname !== "/dashboard"}
-            onBackClick={() => navigate(-1)}
-          />
-          <motion.main
+      {/* Konten utama */}
+      <div className="flex flex-col flex-1 min-w-0">
+        <Header
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          showBackButton={location.pathname !== "/dashboard"}
+          onBackClick={() => navigate(-1)}
+        />
+
+        {/* Main content area */}
+        <main className="flex-1 overflow-auto">
+          <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className={`flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 transition-colors duration-300 ${
+            className={`p-4 md:p-6 min-h-full ${
               theme === "dark"
                 ? "bg-gray-800/80 backdrop-blur-sm"
                 : "bg-white/80 backdrop-blur-sm"
             }`}
           >
             <Outlet />
-          </motion.main>
-        </div>
+          </motion.div>
+        </main>
+
+        {/* Footer */}
+        <Footer />
       </div>
-      <Footer />
     </div>
   );
 }

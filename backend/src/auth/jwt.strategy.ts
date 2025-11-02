@@ -10,16 +10,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: 'bpt@uigm',
+      secretOrKey: process.env.JWT_SECRET || 'bpt@uigm', // Gunakan environment variable
     });
   }
 
   async validate(payload: any) {
-    // Validasi tambahan bisa dilakukan di sini
     return {
+      sub: payload.sub,
       userId: payload.sub,
       username: payload.username,
-      roles: payload.roles,
+      role: payload.role,
+      email: payload.email,
+      id_user: payload.sub,
     };
   }
 }

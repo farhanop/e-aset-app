@@ -1,7 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
-import { Asset } from './asset.entity';
+// src/entities/peminjaman-barang.entity.ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from '../users/user.entity';
 import { PengembalianBarang } from './pengembalian-barang.entity';
+import { Asset } from './asset.entity';
 
 @Entity({ name: 'tbl_peminjaman_barang' })
 export class PeminjamanBarang {
@@ -11,10 +19,10 @@ export class PeminjamanBarang {
   @Column()
   id_aset: number;
 
-  @Column({ length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   nama_peminjam: string;
 
-  @Column({ length: 50 })
+  @Column({ type: 'varchar', length: 50 })
   identitas_peminjam: string;
 
   @Column({ type: 'date' })
@@ -34,14 +42,14 @@ export class PeminjamanBarang {
   id_petugas_pinjam: number;
 
   // --- Relasi ---
-  @ManyToOne(() => Asset)
-  @JoinColumn({ name: 'id_aset' })
-  asset: Asset;
-
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, (user) => user.peminjamanBarang)
   @JoinColumn({ name: 'id_petugas_pinjam' })
   petugasPinjam: User;
 
-  @OneToOne(() => PengembalianBarang, pengembalian => pengembalian.peminjaman)
+  @ManyToOne(() => Asset, (asset) => asset.peminjamanBarang)
+  @JoinColumn({ name: 'id_aset' })
+  asset: Asset;
+
+  @OneToOne(() => PengembalianBarang, (pengembalian) => pengembalian.peminjaman)
   pengembalian: PengembalianBarang;
 }

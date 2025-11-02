@@ -1,6 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
-import { User } from '../users/user.entity';
+// src/entities/pengembalian-barang.entity.ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  JoinColumn,
+  ManyToOne,
+} from 'typeorm';
 import { PeminjamanBarang } from './peminjaman-barang.entity';
+import { User } from '../users/user.entity';
 
 @Entity({ name: 'tbl_pengembalian_barang' })
 export class PengembalianBarang {
@@ -16,15 +24,12 @@ export class PengembalianBarang {
   @Column()
   id_petugas_kembali: number;
 
-  @Column({ type: 'text', nullable: true })
-  catatan_pengembalian: string;
-
   // --- Relasi ---
-  @OneToOne(() => PeminjamanBarang, peminjaman => peminjaman.pengembalian)
+  @OneToOne(() => PeminjamanBarang, (peminjaman) => peminjaman.pengembalian)
   @JoinColumn({ name: 'id_peminjaman' })
   peminjaman: PeminjamanBarang;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, (user) => user.pengembalianBarang)
   @JoinColumn({ name: 'id_petugas_kembali' })
   petugasKembali: User;
 }

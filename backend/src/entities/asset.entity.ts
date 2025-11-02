@@ -5,11 +5,13 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { MasterItem } from './master-item.entity';
 import { Lokasi } from './lokasi.entity';
 import { UnitKerja } from './unit-kerja.entity';
 import { AssetGroup } from './asset-group.entity';
+import { PeminjamanBarang } from './peminjaman-barang.entity';
 
 @Entity({ name: 'tbl_aset' })
 export class Asset {
@@ -96,4 +98,8 @@ export class Asset {
   @ManyToOne(() => AssetGroup, { nullable: true })
   @JoinColumn({ name: 'id_group' })
   group: AssetGroup;
+
+  // Tambahkan relasi ke PeminjamanBarang
+  @OneToMany(() => PeminjamanBarang, (peminjaman) => peminjaman.asset)
+  peminjamanBarang: PeminjamanBarang[];
 }

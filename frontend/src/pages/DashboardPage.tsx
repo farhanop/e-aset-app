@@ -82,6 +82,7 @@ export function DashboardPage() {
   });
   const [recentAssets, setRecentAssets] = useState<Asset[]>([]);
   const [error, setError] = useState("");
+  const [showGuide, setShowGuide] = useState(false); // State untuk mengontrol visibilitas panduan
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -212,7 +213,7 @@ export function DashboardPage() {
     window.location.reload();
   };
 
-  // Komponen untuk kartu statistik dengan link
+  // Komponen untuk kartu statistik dengan link - Tampilan Baru yang Lebih Menarik
   const StatCard = ({
     title,
     value,
@@ -234,57 +235,88 @@ export function DashboardPage() {
   }) => {
     const cardContent = (
       <div
-        className={`relative rounded-xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl ${
+        className={`relative overflow-hidden rounded-2xl transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 ${
           gradient
             ? `bg-gradient-to-br ${color} text-white`
             : theme === "dark"
             ? "bg-gray-800 border border-gray-700"
             : "bg-white border border-gray-200"
-        } shadow-lg group overflow-hidden`}
+        } shadow-xl`}
       >
-        {/* Background pattern */}
+        {/* Background Pattern */}
         <div
-          className={`absolute top-0 right-0 w-32 h-32 -mt-16 -mr-16 rounded-full ${
+          className={`absolute inset-0 ${
             gradient
-              ? "bg-white/10"
+              ? "bg-gradient-to-br from-white/10 to-transparent"
               : theme === "dark"
-              ? "bg-gray-700/50"
-              : "bg-gray-100"
-          } group-hover:scale-150 transition-transform duration-500`}
+              ? "bg-gradient-to-br from-gray-700/30 to-transparent"
+              : "bg-gradient-to-br from-gray-100/70 to-transparent"
+          }`}
         ></div>
 
-        <div className="relative z-10">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
+        {/* Icon Background */}
+        <div
+          className={`absolute top-0 right-0 w-32 h-32 -mr-12 -mt-12 rounded-full blur-xl ${
+            gradient
+              ? "bg-white/20"
+              : theme === "dark"
+              ? "bg-gray-600/40"
+              : "bg-gray-300/60"
+          }`}
+        ></div>
+
+        {/* Decorative Elements */}
+        <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-white/40"></div>
+        <div className="absolute bottom-4 left-4 w-3 h-3 rounded-full bg-white/40"></div>
+
+        {/* Content */}
+        <div className="relative p-6 z-10">
+          <div className="flex justify-between items-start">
+            <div>
               <p
-                className={`text-sm font-semibold mb-1 ${
+                className={`text-sm font-medium mb-2 ${
                   gradient
                     ? "text-white/90"
                     : theme === "dark"
-                    ? "text-gray-400"
-                    : "text-gray-600"
+                    ? "text-gray-300"
+                    : "text-gray-500"
                 }`}
               >
                 {title}
               </p>
-              <p
-                className={`text-3xl font-bold mb-2 ${
-                  gradient
-                    ? "text-white"
-                    : theme === "dark"
-                    ? "text-white"
-                    : "text-gray-900"
-                }`}
-              >
-                {value}
-              </p>
+              <div className="flex items-baseline">
+                <p
+                  className={`text-4xl font-bold mb-2 ${
+                    gradient
+                      ? "text-white"
+                      : theme === "dark"
+                      ? "text-white"
+                      : "text-gray-900"
+                  }`}
+                >
+                  {value}
+                </p>
+                {title === "Total Aset" && (
+                  <span
+                    className={`ml-2 text-sm ${
+                      gradient
+                        ? "text-white/70"
+                        : theme === "dark"
+                        ? "text-gray-400"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    items
+                  </span>
+                )}
+              </div>
               {description && (
                 <p
-                  className={`text-xs ${
+                  className={`text-sm ${
                     gradient
                       ? "text-white/80"
                       : theme === "dark"
-                      ? "text-gray-500"
+                      ? "text-gray-400"
                       : "text-gray-600"
                   }`}
                 >
@@ -293,13 +325,13 @@ export function DashboardPage() {
               )}
             </div>
             <div
-              className={`p-3 rounded-xl ${
+              className={`p-4 rounded-2xl ${
                 gradient
-                  ? "bg-white/20"
+                  ? "bg-white/20 backdrop-blur-sm"
                   : theme === "dark"
-                  ? "bg-gray-700"
-                  : "bg-gray-100"
-              }`}
+                  ? "bg-gray-700/60 backdrop-blur-sm"
+                  : "bg-gray-100/80 backdrop-blur-sm"
+              } shadow-lg`}
             >
               {icon}
             </div>
@@ -307,49 +339,86 @@ export function DashboardPage() {
 
           {/* Progress bar untuk beberapa statistik */}
           {progress && typeof value === "number" && stats.totalAset > 0 && (
-            <div
-              className={`mt-4 w-full ${
-                gradient
-                  ? "bg-white/30"
-                  : theme === "dark"
-                  ? "bg-gray-700"
-                  : "bg-gray-200"
-              } rounded-full h-2`}
-            >
+            <div className="mt-6">
+              <div className="flex justify-between text-xs mb-1">
+                <span
+                  className={
+                    gradient
+                      ? "text-white/80"
+                      : theme === "dark"
+                      ? "text-gray-400"
+                      : "text-gray-600"
+                  }
+                >
+                  Progress
+                </span>
+                <span
+                  className={
+                    gradient
+                      ? "text-white/80"
+                      : theme === "dark"
+                      ? "text-gray-400"
+                      : "text-gray-600"
+                  }
+                >
+                  {((value / stats.totalAset) * 100).toFixed(1)}%
+                </span>
+              </div>
               <div
-                className={`h-2 rounded-full ${
-                  title.includes("Tersedia")
-                    ? "bg-green-400"
-                    : title.includes("Dipinjam")
-                    ? "bg-yellow-400"
-                    : title.includes("Perbaikan")
-                    ? "bg-blue-400"
-                    : title.includes("Rusak")
-                    ? "bg-red-400"
-                    : "bg-indigo-400"
+                className={`w-full h-3 rounded-full ${
+                  gradient
+                    ? "bg-white/20"
+                    : theme === "dark"
+                    ? "bg-gray-700"
+                    : "bg-gray-200"
                 }`}
-                style={{ width: `${(value / stats.totalAset) * 100}%` }}
-              ></div>
+              >
+                <div
+                  className={`h-3 rounded-full ${
+                    title.includes("Tersedia")
+                      ? "bg-green-400"
+                      : title.includes("Dipinjam")
+                      ? "bg-yellow-400"
+                      : title.includes("Perbaikan")
+                      ? "bg-blue-400"
+                      : title.includes("Rusak")
+                      ? "bg-red-400"
+                      : "bg-indigo-400"
+                  }`}
+                  style={{ width: `${(value / stats.totalAset) * 100}%` }}
+                ></div>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Hover effect */}
-        <div
-          className={`absolute inset-0 ${
-            gradient
-              ? "bg-white/5"
-              : theme === "dark"
-              ? "bg-white/5"
-              : "bg-black/5"
-          } opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
-        ></div>
+        {/* Decorative bottom bar */}
+        <div className="absolute bottom-0 left-0 w-full h-1.5">
+          <div
+            className={`h-full ${
+              title.includes("Tersedia")
+                ? "bg-green-400"
+                : title.includes("Dipinjam")
+                ? "bg-yellow-400"
+                : title.includes("Perbaikan")
+                ? "bg-blue-400"
+                : title.includes("Rusak")
+                ? "bg-red-400"
+                : gradient
+                ? "bg-white/30"
+                : "bg-indigo-400"
+            }`}
+          ></div>
+        </div>
       </div>
     );
 
     if (link) {
       return (
-        <Link to={link} className="block">
+        <Link
+          to={link}
+          className="block transform transition-transform duration-300 hover:scale-105"
+        >
           {cardContent}
         </Link>
       );
@@ -361,7 +430,7 @@ export function DashboardPage() {
   // Skeleton loading untuk kartu statistik
   const StatCardSkeleton = () => (
     <div
-      className={`rounded-xl p-6 shadow-lg ${
+      className={`rounded-2xl p-6 shadow-xl ${
         theme === "dark"
           ? "bg-gray-800 border border-gray-700"
           : "bg-white border border-gray-200"
@@ -370,11 +439,11 @@ export function DashboardPage() {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <Skeleton width={120} height={16} className="mb-2" />
-          <Skeleton width={80} height={32} className="mb-3" />
+          <Skeleton width={80} height={36} className="mb-3" />
           <Skeleton width={150} height={14} />
         </div>
         <div
-          className={`p-3 rounded-xl ${
+          className={`p-4 rounded-2xl ${
             theme === "dark" ? "bg-gray-700" : "bg-gray-100"
           }`}
         >
@@ -382,16 +451,16 @@ export function DashboardPage() {
         </div>
       </div>
       <div
-        className={`mt-4 w-full ${
+        className={`mt-6 w-full h-3 rounded-full ${
           theme === "dark" ? "bg-gray-700" : "bg-gray-200"
-        } rounded-full h-2`}
+        }`}
       >
-        <Skeleton height={8} className="rounded-full" />
+        <Skeleton height={12} className="rounded-full" />
       </div>
     </div>
   );
 
-  // Quick Action Card
+  // Quick Action Card - Tampilan Baru
   const QuickActionCard = ({
     title,
     description,
@@ -407,21 +476,26 @@ export function DashboardPage() {
   }) => (
     <Link
       to={link}
-      className={`block rounded-xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl ${
+      className={`block rounded-2xl p-6 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 ${
         theme === "dark"
           ? "bg-gray-800 border border-gray-700"
           : "bg-white border border-gray-200"
-      } shadow-lg group`}
+      } shadow-xl group relative overflow-hidden`}
     >
-      <div className="flex items-start space-x-4">
+      {/* Background glow effect */}
+      <div
+        className={`absolute inset-0 bg-gradient-to-r ${color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}
+      ></div>
+
+      <div className="flex items-start space-x-5 relative z-10">
         <div
-          className={`p-3 rounded-xl ${color} text-white group-hover:scale-110 transition-transform duration-300`}
+          className={`p-4 rounded-2xl ${color} text-white shadow-lg group-hover:scale-110 transition-transform duration-500`}
         >
           {icon}
         </div>
         <div className="flex-1">
           <h3
-            className={`font-semibold mb-1 ${
+            className={`font-bold text-lg mb-2 ${
               theme === "dark" ? "text-white" : "text-gray-900"
             }`}
           >
@@ -429,51 +503,53 @@ export function DashboardPage() {
           </h3>
           <p
             className={`text-sm ${
-              theme === "dark" ? "text-gray-400" : "text-gray-600"
+              theme === "dark" ? "text-gray-300" : "text-gray-600"
             }`}
           >
             {description}
           </p>
         </div>
-        <svg
-          className={`w-5 h-5 mt-1 ${
-            theme === "dark" ? "text-gray-500" : "text-gray-400"
-          } group-hover:translate-x-1 transition-transform duration-300`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
+        <div className="flex items-center">
+          <svg
+            className={`w-6 h-6 ${
+              theme === "dark" ? "text-gray-400" : "text-gray-500"
+            } group-hover:translate-x-1 transition-transform duration-300`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </div>
       </div>
     </Link>
   );
 
-  // Status Badge Component
+  // Status Badge Component - Tampilan Baru
   const StatusBadge = ({ status }: { status: string }) => {
     const getStatusColor = () => {
       switch (status) {
         case "Tersedia":
           return theme === "dark"
-            ? "bg-green-800 text-green-100"
-            : "bg-green-100 text-green-800";
+            ? "bg-green-900/50 text-green-300 border border-green-800/50"
+            : "bg-green-100 text-green-800 border border-green-200";
         case "Dipinjam":
           return theme === "dark"
-            ? "bg-yellow-800 text-yellow-100"
-            : "bg-yellow-100 text-yellow-800";
+            ? "bg-yellow-900/50 text-yellow-300 border border-yellow-800/50"
+            : "bg-yellow-100 text-yellow-800 border border-yellow-200";
         case "Dalam Perbaikan":
           return theme === "dark"
-            ? "bg-blue-800 text-blue-100"
-            : "bg-blue-100 text-blue-800";
+            ? "bg-blue-900/50 text-blue-300 border border-blue-800/50"
+            : "bg-blue-100 text-blue-800 border border-blue-200";
         default:
           return theme === "dark"
-            ? "bg-red-800 text-red-100"
-            : "bg-red-100 text-red-800";
+            ? "bg-red-900/50 text-red-300 border border-red-800/50"
+            : "bg-red-100 text-red-800 border border-red-200";
       }
     };
 
@@ -486,18 +562,18 @@ export function DashboardPage() {
     );
   };
 
-  // Condition Badge Component
+  // Condition Badge Component - Tampilan Baru
   const ConditionBadge = ({ condition }: { condition: string }) => {
     const getConditionColor = () => {
       switch (condition) {
         case "Baik":
           return theme === "dark"
-            ? "bg-green-800 text-green-100"
-            : "bg-green-100 text-green-800";
+            ? "bg-green-900/50 text-green-300 border border-green-800/50"
+            : "bg-green-100 text-green-800 border border-green-200";
         default:
           return theme === "dark"
-            ? "bg-red-800 text-red-100"
-            : "bg-red-100 text-red-800";
+            ? "bg-red-900/50 text-red-300 border border-red-800/50"
+            : "bg-red-100 text-red-800 border border-red-200";
       }
     };
 
@@ -512,8 +588,8 @@ export function DashboardPage() {
 
   if (loading) {
     return (
-      <div>
-        <div className="flex justify-between items-center mb-6">
+      <div className="space-y-8">
+        <div className="flex justify-between items-center">
           <h1
             className={`text-3xl font-bold ${
               theme === "dark" ? "text-white" : "text-gray-800"
@@ -523,7 +599,7 @@ export function DashboardPage() {
           </h1>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {Array(4)
             .fill(0)
             .map((_, index) => (
@@ -531,7 +607,7 @@ export function DashboardPage() {
             ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array(3)
             .fill(0)
             .map((_, index) => (
@@ -540,7 +616,7 @@ export function DashboardPage() {
         </div>
 
         <div
-          className={`rounded-xl shadow-lg p-6 mb-8 ${
+          className={`rounded-2xl shadow-xl p-6 ${
             theme === "dark" ? "bg-gray-800" : "bg-white"
           }`}
         >
@@ -560,13 +636,13 @@ export function DashboardPage() {
               .map((_, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700"
+                  className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700"
                 >
                   <div className="flex items-center">
                     <Skeleton
                       width={40}
                       height={40}
-                      className="rounded-full mr-4"
+                      className="rounded-xl mr-4"
                     />
                     <div>
                       <Skeleton width={150} height={16} />
@@ -585,7 +661,7 @@ export function DashboardPage() {
   if (error) {
     return (
       <div
-        className={`text-center p-8 rounded-xl ${
+        className={`text-center p-8 rounded-2xl ${
           theme === "dark" ? "bg-red-900/20" : "bg-red-50"
         }`}
       >
@@ -608,21 +684,21 @@ export function DashboardPage() {
         <div className="flex justify-center space-x-4">
           <button
             onClick={() => window.location.reload()}
-            className={`mt-4 px-4 py-2 rounded-md ${
+            className={`mt-4 px-6 py-3 rounded-xl font-medium ${
               theme === "dark"
                 ? "bg-blue-600 hover:bg-blue-700"
                 : "bg-blue-500 hover:bg-blue-600"
-            } text-white transition-colors duration-200`}
+            } text-white transition-all duration-300 shadow-lg hover:shadow-xl`}
           >
             Coba Lagi
           </button>
           <button
             onClick={clearCache}
-            className={`mt-4 px-4 py-2 rounded-md ${
+            className={`mt-4 px-6 py-3 rounded-xl font-medium ${
               theme === "dark"
                 ? "bg-gray-600 hover:bg-gray-700"
                 : "bg-gray-500 hover:bg-gray-600"
-            } text-white transition-colors duration-200`}
+            } text-white transition-all duration-300 shadow-lg hover:shadow-xl`}
           >
             Hapus Cache & Muat Ulang
           </button>
@@ -632,18 +708,28 @@ export function DashboardPage() {
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1
-          className={`text-3xl font-bold ${
-            theme === "dark" ? "text-white" : "text-gray-800"
-          }`}
-        >
-          Dashboard
-        </h1>
-        <div className="text-sm">
+    <div className="min-h-screen">
+      {/* Header dengan desain baru */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+        <div>
+          <h1
+            className={`text-4xl md:text-5xl font-bold mb-3 ${
+              theme === "dark" ? "text-white" : "text-gray-900"
+            }`}
+          >
+            Selamat Datang
+          </h1>
+          <p
+            className={`text-lg ${
+              theme === "dark" ? "text-gray-300" : "text-gray-600"
+            }`}
+          >
+            Dashboard Manajemen Aset Digital
+          </p>
+        </div>
+        <div className="flex flex-col items-end">
           <span
-            className={`${
+            className={`text-sm ${
               theme === "dark" ? "text-gray-400" : "text-gray-600"
             }`}
           >
@@ -654,95 +740,255 @@ export function DashboardPage() {
               year: "numeric",
             })}
           </span>
+          <span
+            className={`text-xs ${
+              theme === "dark" ? "text-gray-500" : "text-gray-500"
+            }`}
+          >
+            {new Date().toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
         </div>
       </div>
 
-      {/* Judul Selamat Datang */}
-
-      {/* Panduan Pengguna Baru */}
-      <div
-        className={`p-6 rounded-lg shadow-lg mb-8 ${
-          theme === "dark" ? "bg-gray-800" : "bg-white"
-        }`}
-      >
-        <h2
-          className={`text-xl font-semibold mb-4 ${
-            theme === "dark" ? "text-white" : "text-gray-700"
+      {/* Tombol Panduan Aplikasi dengan desain baru */}
+      <div className="mb-8 flex justify-end">
+        <button
+          onClick={() => setShowGuide(!showGuide)}
+          className={`px-6 py-3 rounded-xl font-medium transition-all duration-500 flex items-center shadow-lg hover:shadow-xl ${
+            theme === "dark"
+              ? "bg-blue-600 hover:bg-blue-700 text-white"
+              : "bg-blue-500 hover:bg-blue-600 text-white"
           }`}
         >
-          Panduan Singkat Aplikasi E-Aset
-        </h2>
-
-        <p
-          className={`mb-4 ${
-            theme === "dark" ? "text-gray-300" : "text-gray-600"
-          }`}
-        >
-          Sistem ini dirancang untuk mendata, melacak, dan mengelola seluruh
-          aset yang dimiliki oleh organisasi. Berikut adalah fitur-fitur utama
-          yang dapat Anda gunakan:
-        </p>
-
-        <ul
-          className={`space-y-3 list-disc list-inside ${
-            theme === "dark" ? "text-gray-300" : "text-gray-600"
-          }`}
-        >
-          <li>
-            <strong
-              className={theme === "dark" ? "text-white" : "text-gray-800"}
-            >
-              Manajemen Aset:
-            </strong>
-            Mendaftarkan aset baru (termasuk input massal), mengedit data, dan
-            melihat detail setiap aset. Setiap aset akan otomatis mendapatkan
-            Kode Aset dan QR Code unik.
-          </li>
-          <li>
-            <strong
-              className={theme === "dark" ? "text-white" : "text-gray-800"}
-            >
-              Siklus Hidup Aset:
-            </strong>
-            Mencatat seluruh riwayat aset, mulai dari{" "}
-            <span className="font-medium text-blue-500">Peminjaman</span>,{" "}
-            <span className="font-medium text-orange-500">Perbaikan</span>,{" "}
-            <span className="font-medium text-purple-500">Mutasi</span>{" "}
-            (perpindahan), hingga{" "}
-            <span className="font-medium text-red-500">Pemusnahan</span>.
-          </li>
-          <li>
-            <strong
-              className={theme === "dark" ? "text-white" : "text-gray-800"}
-            >
-              Data Master:
-            </strong>
-            Mengelola data pendukung utama organisasi, termasuk hierarki lokasi
-            (Kampus ➔ Gedung ➔ Ruangan) dan struktur organisasi (Fakultas ➔
-            Prodi/Bagian).
-          </li>
-          <li>
-            <strong
-              className={theme === "dark" ? "text-white" : "text-gray-800"}
-            >
-              Manajemen Pengguna:
-            </strong>
-            Mengatur siapa saja yang dapat mengakses aplikasi dan apa yang dapat
-            mereka lakukan melalui sistem Peran (Roles) dan Hak Akses
-            (Permissions).
-          </li>
-        </ul>
+          <svg
+            className="w-5 h-5 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          Panduan Aplikasi
+          <svg
+            className={`w-5 h-5 ml-2 transition-transform duration-500 ${
+              showGuide ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
       </div>
 
+      {/* Panduan Aplikasi - Hanya muncul jika showGuide = true */}
+      {showGuide && (
+        <div
+          className={`p-8 rounded-2xl shadow-2xl mb-10 border transform transition-all duration-500 ${
+            theme === "dark"
+              ? "bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700"
+              : "bg-gradient-to-br from-blue-50 to-indigo-100 border-blue-200"
+          }`}
+        >
+          <div className="flex flex-col md:flex-row items-start space-y-6 md:space-y-0 md:space-x-6">
+            <div
+              className={`p-4 rounded-2xl flex-shrink-0 ${
+                theme === "dark" ? "bg-blue-500/20" : "bg-blue-500/10"
+              }`}
+            >
+              <svg
+                className="w-10 h-10 text-blue-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2
+                className={`text-2xl font-bold mb-4 ${
+                  theme === "dark" ? "text-white" : "text-gray-800"
+                }`}
+              >
+                🚀 Panduan Singkat Aplikasi E-Aset
+              </h2>
+
+              <p
+                className={`text-lg mb-6 leading-relaxed ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Sistem ini dirancang untuk mendata, melacak, dan mengelola
+                seluruh aset organisasi secara digital dan terintegrasi.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Manajemen Aset */}
+                <div
+                  className={`p-6 rounded-xl border transform transition-all duration-300 hover:scale-105 ${
+                    theme === "dark"
+                      ? "bg-gray-700/50 border-gray-600"
+                      : "bg-white/60 border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-center mb-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                    <h3
+                      className={`font-bold text-lg ${
+                        theme === "dark" ? "text-green-400" : "text-green-600"
+                      }`}
+                    >
+                      📋 Manajemen Aset
+                    </h3>
+                  </div>
+                  <p
+                    className={`text-sm ${
+                      theme === "dark" ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Daftarkan aset baru (termasuk input massal), edit data, dan
+                    lihat detail aset. Setiap aset otomatis mendapatkan{" "}
+                    <strong>Kode Aset</strong> dan <strong>QR Code</strong>{" "}
+                    unik.
+                  </p>
+                </div>
+
+                {/* Siklus Hidup Aset */}
+                <div
+                  className={`p-6 rounded-xl border transform transition-all duration-300 hover:scale-105 ${
+                    theme === "dark"
+                      ? "bg-gray-700/50 border-gray-600"
+                      : "bg-white/60 border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-center mb-3">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
+                    <h3
+                      className={`font-bold text-lg ${
+                        theme === "dark" ? "text-blue-400" : "text-blue-600"
+                      }`}
+                    >
+                      🔄 Siklus Hidup Aset
+                    </h3>
+                  </div>
+                  <p
+                    className={`text-sm ${
+                      theme === "dark" ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Lacak riwayat lengkap aset:
+                    <span className="text-yellow-500 font-medium">
+                      {" "}
+                      Peminjaman
+                    </span>
+                    ,
+                    <span className="text-orange-500 font-medium">
+                      {" "}
+                      Perbaikan
+                    </span>
+                    ,
+                    <span className="text-purple-500 font-medium"> Mutasi</span>
+                    , hingga
+                    <span className="text-red-500 font-medium">
+                      {" "}
+                      Pemusnahan
+                    </span>
+                    .
+                  </p>
+                </div>
+
+                {/* Data Master */}
+                <div
+                  className={`p-6 rounded-xl border transform transition-all duration-300 hover:scale-105 ${
+                    theme === "dark"
+                      ? "bg-gray-700/50 border-gray-600"
+                      : "bg-white/60 border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-center mb-3">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
+                    <h3
+                      className={`font-bold text-lg ${
+                        theme === "dark" ? "text-purple-400" : "text-purple-600"
+                      }`}
+                    >
+                      🏢 Data Master
+                    </h3>
+                  </div>
+                  <p
+                    className={`text-sm ${
+                      theme === "dark" ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Kelola data pendukung: hierarki lokasi (
+                    <strong>Kampus → Gedung → Ruangan</strong>) dan struktur
+                    organisasi (<strong>Fakultas → Prodi/Bagian</strong>).
+                  </p>
+                </div>
+
+                {/* Manajemen Pengguna */}
+                <div
+                  className={`p-6 rounded-xl border transform transition-all duration-300 hover:scale-105 ${
+                    theme === "dark"
+                      ? "bg-gray-700/50 border-gray-600"
+                      : "bg-white/60 border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-center mb-3">
+                    <div className="w-3 h-3 bg-orange-500 rounded-full mr-3"></div>
+                    <h3
+                      className={`font-bold text-lg ${
+                        theme === "dark" ? "text-orange-400" : "text-orange-600"
+                      }`}
+                    >
+                      👥 Manajemen Pengguna
+                    </h3>
+                  </div>
+                  <p
+                    className={`text-sm ${
+                      theme === "dark" ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Atur akses pengguna dengan sistem{" "}
+                    <strong>Peran (Roles)</strong> dan
+                    <strong> Hak Akses (Permissions)</strong> yang fleksibel.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Kartu Statistik Utama */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <StatCard
           title="Total Aset"
           value={stats.totalAset}
           description="Semua aset terdaftar"
           icon={
             <svg
-              className="w-6 h-6"
+              className="w-7 h-7"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -755,7 +1001,7 @@ export function DashboardPage() {
               />
             </svg>
           }
-          color="from-blue-500 to-blue-600"
+          color="from-blue-500 to-blue-700"
           link="/assets"
           gradient
         />
@@ -770,7 +1016,7 @@ export function DashboardPage() {
           }% dari total`}
           icon={
             <svg
-              className="w-6 h-6"
+              className="w-7 h-7"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -783,7 +1029,7 @@ export function DashboardPage() {
               />
             </svg>
           }
-          color="from-green-500 to-green-600"
+          color="from-green-500 to-green-700"
           gradient
           progress
         />
@@ -798,7 +1044,7 @@ export function DashboardPage() {
           }% dari total`}
           icon={
             <svg
-              className="w-6 h-6"
+              className="w-7 h-7"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -811,7 +1057,7 @@ export function DashboardPage() {
               />
             </svg>
           }
-          color="from-yellow-500 to-yellow-600"
+          color="from-yellow-500 to-yellow-700"
           gradient
           progress
         />
@@ -826,7 +1072,7 @@ export function DashboardPage() {
           }% dari total`}
           icon={
             <svg
-              className="w-6 h-6"
+              className="w-7 h-7"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -845,21 +1091,21 @@ export function DashboardPage() {
               />
             </svg>
           }
-          color="from-purple-500 to-purple-600"
+          color="from-purple-500 to-purple-700"
           gradient
           progress
         />
       </div>
 
       {/* Kartu Statistik Baris Kedua */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <StatCard
           title="Lokasi"
           value={stats.totalLokasi}
           description="Total ruangan"
           icon={
             <svg
-              className="w-6 h-6"
+              className="w-7 h-7"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -879,7 +1125,9 @@ export function DashboardPage() {
             </svg>
           }
           color={
-            theme === "dark" ? "bg-indigo-500" : "bg-indigo-100 text-indigo-600"
+            theme === "dark"
+              ? "bg-indigo-500/80"
+              : "bg-indigo-100/80 text-indigo-600"
           }
           link="/master-data?tab=lokasi"
         />
@@ -890,7 +1138,7 @@ export function DashboardPage() {
           description="Total gedung"
           icon={
             <svg
-              className="w-6 h-6"
+              className="w-7 h-7"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -904,7 +1152,9 @@ export function DashboardPage() {
             </svg>
           }
           color={
-            theme === "dark" ? "bg-green-500" : "bg-green-100 text-green-600"
+            theme === "dark"
+              ? "bg-green-500/80"
+              : "bg-green-100/80 text-green-600"
           }
           link="/master-data?tab=gedung"
         />
@@ -915,7 +1165,7 @@ export function DashboardPage() {
           description="Jenis kategori"
           icon={
             <svg
-              className="w-6 h-6"
+              className="w-7 h-7"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -928,19 +1178,21 @@ export function DashboardPage() {
               />
             </svg>
           }
-          color={theme === "dark" ? "bg-teal-500" : "bg-teal-100 text-teal-600"}
+          color={
+            theme === "dark" ? "bg-teal-500/80" : "bg-teal-100/80 text-teal-600"
+          }
           link="/master-data?tab=kategori"
         />
       </div>
 
       {/* Quick Actions */}
-      <div className="mb-8">
+      <div className="mb-10">
         <h2
           className={`text-2xl font-bold mb-6 ${
             theme === "dark" ? "text-white" : "text-gray-900"
           }`}
         >
-          Aksi Cepat
+          ⚡ Aksi Cepat
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <QuickActionCard
@@ -948,7 +1200,7 @@ export function DashboardPage() {
             description="Daftarkan aset baru"
             icon={
               <svg
-                className="w-6 h-6"
+                className="w-7 h-7"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -970,7 +1222,7 @@ export function DashboardPage() {
             description="Laporan aset per lokasi"
             icon={
               <svg
-                className="w-6 h-6"
+                className="w-7 h-7"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -992,7 +1244,7 @@ export function DashboardPage() {
             description="Kelola pengguna sistem"
             icon={
               <svg
-                className="w-6 h-6"
+                className="w-7 h-7"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1013,24 +1265,26 @@ export function DashboardPage() {
 
       {/* Aset Terbaru */}
       <div
-        className={`rounded-xl shadow-lg p-6 mb-8 ${
-          theme === "dark" ? "bg-gray-800" : "bg-white"
+        className={`rounded-2xl shadow-2xl p-6 mb-8 border transform transition-all duration-300 ${
+          theme === "dark"
+            ? "bg-gray-800 border-gray-700"
+            : "bg-white border-gray-200"
         }`}
       >
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-6">
           <h2
             className={`text-xl font-semibold ${
               theme === "dark" ? "text-white" : "text-gray-800"
             }`}
           >
-            Aset Terbaru
+            📦 Aset Terbaru
           </h2>
           <Link
             to="/assets"
-            className={`text-sm font-medium ${
+            className={`text-sm font-medium px-4 py-2 rounded-lg transition-all transform hover:scale-105 ${
               theme === "dark"
-                ? "text-blue-400 hover:text-blue-300"
-                : "text-blue-600 hover:text-blue-500"
+                ? "bg-blue-500/20 text-blue-300 hover:bg-blue-500/30"
+                : "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20"
             }`}
           >
             Lihat Semua →
@@ -1043,16 +1297,16 @@ export function DashboardPage() {
               <Link
                 key={asset.id_aset}
                 to={`/assets/${asset.id_aset}`}
-                className={`flex items-center justify-between p-4 rounded-lg border ${
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
                   theme === "dark"
-                    ? "border-gray-700 hover:bg-gray-700"
+                    ? "border-gray-700 hover:bg-gray-700/50"
                     : "border-gray-200 hover:bg-gray-50"
-                } transition-colors`}
+                }`}
               >
                 <div className="flex items-center">
                   <div
-                    className={`p-2 rounded-lg ${
-                      theme === "dark" ? "bg-gray-700" : "bg-gray-100"
+                    className={`p-3 rounded-xl ${
+                      theme === "dark" ? "bg-gray-700" : "bg-blue-100"
                     }`}
                   >
                     <svg
@@ -1095,8 +1349,8 @@ export function DashboardPage() {
             ))
           ) : (
             <div
-              className={`text-center p-8 rounded-lg ${
-                theme === "dark" ? "bg-gray-800" : "bg-gray-50"
+              className={`text-center p-8 rounded-xl ${
+                theme === "dark" ? "bg-gray-700/50" : "bg-gray-50"
               }`}
             >
               <svg
@@ -1129,7 +1383,7 @@ export function DashboardPage() {
               <div className="mt-6">
                 <Link
                   to="/assets/new"
-                  className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
+                  className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white transition-all duration-300 transform hover:scale-105 ${
                     theme === "dark"
                       ? "bg-blue-600 hover:bg-blue-700"
                       : "bg-blue-500 hover:bg-blue-600"

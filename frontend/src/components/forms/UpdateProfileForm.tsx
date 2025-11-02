@@ -1,21 +1,34 @@
-// frontend/src/components/forms/UpdateProfileForm.tsx
+// frontend\src\components\forms\UpdateProfileForm.tsx
 import React, { useState, useEffect, useRef } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { FaCamera, FaTrash } from "react-icons/fa";
 import api from "../../api/axios";
 import { User } from "../../types/User";
 
-interface UpdateProfileFormProps {
-  initialData: User; // Data user saat ini
-  onSubmit: (data: UpdateProfileData | FormData) => Promise<void>; // Fungsi untuk submit
-  isSubmitting: boolean; // Status loading dari parent
-}
-
-export interface UpdateProfileData {
+/**
+ * Tipe data untuk state internal form
+ */
+interface FormDataState {
   nama_lengkap: string;
   email: string;
   nomor_telepon?: string;
-  foto_profil?: string;
+}
+
+/**
+ * Tipe data yang dikirim ke parent (ProfilePage) saat submit
+ */
+export interface UpdateProfilePayload {
+  nama_lengkap: string;
+  email: string;
+  nomor_telepon?: string;
+  foto_profil_file?: File | null; // File baru yang akan diupload
+  foto_profil_remove?: boolean; // Flag jika foto ingin dihapus
+}
+
+interface UpdateProfileFormProps {
+  initialData: User; // Data user saat ini
+  onSubmit: (data: UpdateProfilePayload) => Promise<void>; // Fungsi untuk submit
+  isSubmitting: boolean; // Status loading dari parent
 }
 
 export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
@@ -24,26 +37,28 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
   isSubmitting,
 }) => {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState<UpdateProfileData>({
+
+  // State untuk data teks
+  const [formData, setFormData] = useState<FormDataState>({
     nama_lengkap: "",
     email: "",
     nomor_telepon: "",
-    foto_profil: "",
   });
 
+  // State untuk file dan preview
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  // HAPUS state isUploading, karena kita tidak upload di sini
+  // const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Isi form dengan data awal saat komponen dimuat
+  // Isi form dengan data awal
   useEffect(() => {
     if (initialData) {
       setFormData({
         nama_lengkap: initialData.nama_lengkap || "",
         email: initialData.email || "",
         nomor_telepon: initialData.nomor_telepon || "",
-        foto_profil: initialData.foto_profil || "",
       });
 
       if (initialData.foto_profil) {
@@ -64,20 +79,18 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
 
-      // Validasi tipe file
       if (!file.type.match("image.*")) {
         alert("Hanya file gambar yang diperbolehkan");
         return;
       }
-
-      // Validasi ukuran file (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         alert("Ukuran file maksimal 10MB");
         return;
       }
 
-      setSelectedFile(file);
+      setSelectedFile(file); // Simpan file mentah
 
+      // Buat preview lokal
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -100,68 +113,29 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
     }
   };
 
+  // ===================================================================
+  // 🔧 PERBAIKAN UTAMA: handleSubmit 🔧
+  // ===================================================================
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    try {
-      if (selectedFile) {
-        // Upload file terlebih dahulu
-        setIsUploading(true);
+    // Hapus semua logika 'try/catch' dan 'api.post' dari sini.
+    // Kita hanya kumpulkan data dan kirim ke parent.
 
-        const uploadFormData = new FormData();
-        uploadFormData.append("file", selectedFile);
+    const payload: UpdateProfilePayload = {
+      nama_lengkap: formData.nama_lengkap,
+      email: formData.email,
+      nomor_telepon: formData.nomor_telepon || undefined,
 
-        const uploadResp = await api.post(
-          "/auth/profile/upload-photo",
-          uploadFormData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
+      // Kirim file mentahnya, BUKAN path
+      foto_profil_file: selectedFile,
 
-        const fotoPath =
-          uploadResp.data?.url ||
-          (uploadResp.data?.filename
-            ? `/uploads/profile-photos/${uploadResp.data.filename}`
-            : null);
+      // Kirim flag 'true' jika user menghapus foto dan tidak memilih yang baru
+      foto_profil_remove: preview === null && !selectedFile,
+    };
 
-        if (!fotoPath) {
-          throw new Error("Gagal meng-upload foto profil");
-        }
-
-        // Build payload dengan foto_profil path
-        const payload: UpdateProfileData = {
-          nama_lengkap: formData.nama_lengkap,
-          email: formData.email,
-          nomor_telepon: formData.nomor_telepon || undefined,
-          foto_profil: fotoPath,
-        };
-
-        await onSubmit(payload);
-      } else if (preview === null) {
-        // User menghapus foto: kirim foto_profil sebagai string kosong untuk menghapus
-        const payload: UpdateProfileData = {
-          nama_lengkap: formData.nama_lengkap,
-          email: formData.email,
-          nomor_telepon: formData.nomor_telepon || undefined,
-          foto_profil: "", // String kosong untuk menghapus foto
-        };
-
-        await onSubmit(payload);
-      } else {
-        // Tidak ada perubahan foto
-        await onSubmit(formData);
-      }
-    } catch (error: any) {
-      console.error("Error updating profile:", error);
-      alert(
-        error.response?.data?.message ||
-          error.message ||
-          "Gagal memperbarui profil"
-      );
-    } finally {
-      setIsUploading(false);
-    }
+    // Panggil fungsi onSubmit dari parent (ProfilePage) dengan payload ini
+    await onSubmit(payload);
   };
 
   const inputClass = `mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
@@ -204,16 +178,12 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
             <button
               type="button"
               onClick={triggerFileInput}
-              disabled={isSubmitting || isUploading}
+              disabled={isSubmitting} // Hapus isUploading
               className={`p-2 rounded-full shadow-md ${
                 theme === "dark"
                   ? "bg-blue-600 hover:bg-blue-700 text-white"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
-              } ${
-                isSubmitting || isUploading
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
+              } ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <FaCamera className="text-sm" />
             </button>
@@ -222,16 +192,12 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
               <button
                 type="button"
                 onClick={handleRemovePhoto}
-                disabled={isSubmitting || isUploading}
+                disabled={isSubmitting} // Hapus isUploading
                 className={`p-2 rounded-full shadow-md ${
                   theme === "dark"
                     ? "bg-red-600 hover:bg-red-700 text-white"
                     : "bg-red-500 hover:bg-red-600 text-white"
-                } ${
-                  isSubmitting || isUploading
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
+                } ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <FaTrash className="text-sm" />
               </button>
@@ -256,6 +222,7 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
         </p>
       </div>
 
+      {/* Input Fields */}
       <div>
         <label htmlFor="nama_lengkap" className={labelClass}>
           Nama Lengkap
@@ -266,8 +233,7 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
           name="nama_lengkap"
           value={formData.nama_lengkap}
           onChange={handleInputChange}
-          required
-          disabled={isSubmitting || isUploading}
+          disabled={isSubmitting} // Hapus isUploading
           className={inputClass}
         />
       </div>
@@ -282,8 +248,7 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
           name="email"
           value={formData.email}
           onChange={handleInputChange}
-          required
-          disabled={isSubmitting || isUploading}
+          disabled={isSubmitting} // Hapus isUploading
           className={inputClass}
         />
       </div>
@@ -298,7 +263,7 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
           name="nomor_telepon"
           value={formData.nomor_telepon || ""}
           onChange={handleInputChange}
-          disabled={isSubmitting || isUploading}
+          disabled={isSubmitting} // Hapus isUploading
           className={inputClass}
         />
       </div>
@@ -306,14 +271,10 @@ export const UpdateProfileForm: React.FC<UpdateProfileFormProps> = ({
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={isSubmitting || isUploading}
+          disabled={isSubmitting} // Hapus isUploading
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
         >
-          {isUploading
-            ? "Mengupload Foto..."
-            : isSubmitting
-            ? "Menyimpan..."
-            : "Simpan Perubahan"}
+          {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
         </button>
       </div>
     </form>

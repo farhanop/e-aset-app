@@ -1,19 +1,24 @@
 // backend/src/auth/dto/update-profile.dto.ts
-import { IsString, IsEmail, IsOptional, MaxLength, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  MaxLength,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional()
   @IsString()
-  @IsNotEmpty()
+  @IsOptional() 
   @MaxLength(100)
-  nama_lengkap: string;
+  nama_lengkap?: string; 
 
   @ApiPropertyOptional()
   @IsEmail()
-  @IsNotEmpty()
+  @IsOptional() 
   @MaxLength(100)
-  email: string;
+  email?: string; 
 
   @ApiPropertyOptional()
   @IsString()
@@ -21,7 +26,10 @@ export class UpdateProfileDto {
   @MaxLength(20)
   nomor_telepon?: string;
 
-  @ApiPropertyOptional({ description: 'Path ke foto profil di server (mis. /uploads/profile-photos/abc.jpg)' })
+  @ApiPropertyOptional({
+    description:
+      'Path ke foto profil di server (mis. /uploads/profile-photos/abc.jpg)',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(255)

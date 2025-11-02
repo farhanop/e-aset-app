@@ -92,60 +92,85 @@
 
 ---
 
-src/
-├── components/
-│ ├── layout/
+e-aset-app/
+├── 📂 backend/ # NestJS API
+├── 📂 frontend/ # React App  
+├── 📂 database/ # SQL files & migrations
+├── 📂 docs/ # Documentation
+├── docker-compose.yml # Container setup
+├── README.md # Project documentation
+└── .gitignore
+
+backend/
+├── 📂 src/
+│ ├── 📂 auth/ # Authentication module
+│ │ ├── auth.controller.ts
+│ │ ├── auth.service.ts
+│ │ ├── jwt.strategy.ts
+│ │ └── 📂 dto/
+│ ├── 📂 users/ # Users module
+│ │ ├── users.controller.ts
+│ │ ├── users.service.ts
+│ │ ├── user.entity.ts
+│ │ └── 📂 dto/
+│ ├── 📂 aset/ # Asset management module
+│ │ ├── aset.controller.ts
+│ │ ├── aset.service.ts
+│ │ ├── aset.entity.ts
+│ │ └── 📂 dto/
+│ ├── 📂 common/ # Shared utilities
+│ │ ├── 📂 guards/
+│ │ ├── 📂 filters/
+│ │ └── 📂 interceptors/
+│ ├── app.module.ts # Main module
+│ └── main.ts # App bootstrap
+├── package.json
+├── tsconfig.json
+├── .env
+└── nest-cli.json
+
+frontend/
+├── 📂 src/
+│ ├── 📂 components/
+│ │ ├── 📂 ui/ # Reusable UI components
+│ │ │ ├── Button.tsx
+│ │ │ ├── Modal.tsx
+│ │ │ ├── Table.tsx
+│ │ │ └── Form.tsx
+│ │ ├── 📂 forms/ # Form components
+│ │ │ ├── UserForm.tsx
+│ │ │ ├── AsetForm.tsx
+│ │ │ └── LoginForm.tsx
+│ │ └── 📂 layout/ # Layout components
 │ │ ├── Header.tsx
 │ │ ├── Sidebar.tsx
-│ │ ├── Footer.tsx
-│ │ └── MainLayout.tsx
-│ ├── ui/
-│ │ ├── LoadingSpinner.tsx
-│ │ ├── SkeletonLoader.tsx
-│ │ └── Modal.tsx
-│ └── forms/
-│ ├── LoginForm.tsx
-│ └── RegisterUserForm.tsx
-├── pages/
-│ ├── LoginPage.tsx
-│ ├── Dashboard.tsx
-│ ├── UsersPage.tsx
-│ ├── AssetsPage.tsx
-│ ├── TransactionsPage.tsx
-│ ├── ReportsPage.tsx
-│ └── SettingsPage.tsx
-├── contexts/
-│ ├── ThemeContext.tsx
-│ ├── AuthContext.tsx
-│ └── AppContext.tsx
-├── hooks/
-│ ├── useAuth.ts
-│ ├── useTheme.ts
-│ ├── useApi.ts
-│ └── useLocalStorage.ts
-├── services/
-│ ├── api.ts
-│ ├── authService.ts
-│ ├── userService.ts
-│ ├── assetService.ts
-│ └── reportService.ts
-├── types/
-│ ├── database.ts
-│ ├── auth.ts
-│ └── common.ts
-├── utils/
-│ ├── constants.ts
-│ ├── helpers.ts
-│ └── validators.ts
-└── assets/
-├── images/
-└── styles/
-
-
-
-Tambahkan Lokasi Untuk penomoran surat
-
-
-Backend QRcode = npm install qrcode
-Frontend QRcode = npm install react-qr-code
-
+│ │ └── Layout.tsx
+│ ├── 📂 pages/ # Page components
+│ │ ├── Dashboard.tsx
+│ │ ├── UsersPage.tsx
+│ │ ├── AsetPage.tsx
+│ │ ├── ProfilePage.tsx
+│ │ └── LoginPage.tsx
+│ ├── 📂 contexts/ # React contexts
+│ │ ├── AuthContext.tsx
+│ │ ├── ThemeContext.tsx
+│ │ └── LoadingContext.tsx
+│ ├── 📂 hooks/ # Custom hooks
+│ │ ├── useAuth.ts
+│ │ ├── useApi.ts
+│ │ └── useLocalStorage.ts
+│ ├── 📂 types/ # TypeScript types
+│ │ ├── User.ts
+│ │ ├── Aset.ts
+│ │ └── Api.ts
+│ ├── 📂 api/ # API configuration
+│ │ ├── axios.ts
+│ │ ├── auth.ts
+│ │ └── users.ts
+│ ├── App.tsx
+│ ├── main.tsx
+│ └── routes.tsx
+├── package.json
+├── tailwind.config.js
+├── vite.config.ts
+└── tsconfig.json

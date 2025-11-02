@@ -323,7 +323,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <FaLock
                           className={`text-lg transition-colors duration-300 ${
-                            theme === "dark" ? "text-indigo-400" : "text-indigo-600"
+                            theme === "dark"
+                              ? "text-indigo-400"
+                              : "text-indigo-600"
                           }`}
                         />
                       </div>
@@ -449,7 +451,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                     theme === "dark" ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
-                  © BPT. {new Date().getFullYear()} Universitas IGM 
+                  © BPT. {new Date().getFullYear()} Universitas IGM
                   <br />
                   <span
                     className={`${

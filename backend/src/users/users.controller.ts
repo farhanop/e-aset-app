@@ -1,3 +1,4 @@
+// backend\src\users\users.controller.ts
 import {
   Controller,
   Get,
@@ -41,26 +42,18 @@ export class UsersController {
     return this.usersService.findOneById(id);
   }
 
-  @Get(':id/roles')
-  getUserRoles(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.getUserRoles(id);
+  @Get(':id/role')
+  getUserRole(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.getUserRole(id);
   }
 
-  @Post(':id/roles/:roleId')
-  addRoleToUser(
-    @Param('id', ParseIntPipe) userId: number,
-    @Param('roleId', ParseIntPipe) roleId: number,
+  @Patch(':id/role')
+  @HttpCode(HttpStatus.OK)
+  updateUserRole(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('role') role: string,
   ) {
-    return this.usersService.addRoleToUser(userId, roleId);
-  }
-
-  @Delete(':id/roles/:roleId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  removeRoleFromUser(
-    @Param('id', ParseIntPipe) userId: number,
-    @Param('roleId', ParseIntPipe) roleId: number,
-  ) {
-    return this.usersService.removeRoleFromUser(userId, roleId);
+    return this.usersService.changeUserRole(id, role);
   }
 
   @Patch(':id')

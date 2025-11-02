@@ -7,7 +7,8 @@ export interface User {
   nomor_telepon?: string;
   foto_profil?: string;
   status: "aktif" | "nonaktif";
-  roles?: Role[];
+  role: "super-admin" | "admin" | "staff";
+  password?: string; // Tambahkan properti password dengan opsional
   sessionInfo?: {
     isActive: boolean;
     timeRemaining: number;

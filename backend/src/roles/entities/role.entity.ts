@@ -1,4 +1,3 @@
-// src/roles/entities/role.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,7 +6,6 @@ import {
   JoinTable,
 } from 'typeorm';
 import { Permission } from './permission.entity';
-import { User } from '../../users/user.entity';
 
 @Entity({ name: 'tbl_roles' })
 export class Role {
@@ -20,16 +18,12 @@ export class Role {
   @Column({ type: 'text', nullable: true })
   deskripsi: string;
 
-   @ManyToMany(() => User, (user) => user.roles)
-  users: User[];
+  // HAPUS relasi ke User karena kita menggunakan kolom role langsung di tbl_users
 
   // Relasi ke Permission (jika ada)
   @ManyToMany(() => Permission, (permission) => permission.roles)
-
-  // 👇 TAMBAHKAN BAGIAN INI
-  @ManyToMany(() => Permission)
   @JoinTable({
-    name: 'tbl_role_permissions', // Nama tabel penghubung
+    name: 'tbl_role_permissions',
     joinColumn: { name: 'id_role', referencedColumnName: 'id_role' },
     inverseJoinColumn: {
       name: 'id_permission',

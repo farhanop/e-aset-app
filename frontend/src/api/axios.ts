@@ -43,6 +43,7 @@ api.interceptors.response.use(
 
       // Handle 401 Unauthorized
       if (error.response.status === 401) {
+        console.log("Unauthorized access, logging out...");
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
         delete api.defaults.headers.common["Authorization"];

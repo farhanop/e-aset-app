@@ -1,3 +1,4 @@
+// frontend\src\components\forms\KategoriItemForm.tsx
 import { useState, useEffect } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 

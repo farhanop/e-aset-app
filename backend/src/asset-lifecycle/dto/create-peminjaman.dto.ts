@@ -1,5 +1,12 @@
 // src/asset-lifecycle/dto/create-peminjaman.dto.ts
-import { IsInt, IsNotEmpty, IsString, IsDateString } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  IsDateString,
+  IsDate,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreatePeminjamanDto {
   @IsInt()
@@ -14,7 +21,8 @@ export class CreatePeminjamanDto {
   @IsNotEmpty()
   identitas_peminjam: string;
 
-  @IsDateString()
+  @IsDate()
+  @Type(() => Date)
   @IsNotEmpty()
   tgl_rencana_kembali: Date;
 }

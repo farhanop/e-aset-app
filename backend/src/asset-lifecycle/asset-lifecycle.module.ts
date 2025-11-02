@@ -12,11 +12,7 @@ import { PengembalianBarang } from '../entities/pengembalian-barang.entity';
 @Module({
   imports: [
     // Daftarkan semua entity di sini
-    TypeOrmModule.forFeature([
-      Asset,
-      PeminjamanBarang,
-      PengembalianBarang,
-    ]),
+    TypeOrmModule.forFeature([Asset, PeminjamanBarang, PengembalianBarang]),
   ],
   controllers: [AssetLifecycleController],
   providers: [AssetLifecycleService],

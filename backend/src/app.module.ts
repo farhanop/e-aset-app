@@ -9,9 +9,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { RolesModule } from './roles/roles.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { AssetsModule } from './assets/assets.module';
+import { PerbaikanModule } from './perbaikan/entities/perbaikan.module';
+import { MutasiModule } from './mutasi/mutasi.module';
+import { PemusnahanModule } from './pemusnahan/entities/pemusnahan.module';
 import { AssetLifecycleModule } from './asset-lifecycle/asset-lifecycle.module';
 import { JwtService } from '@nestjs/jwt';
 import { SlidingThrottlerGuard } from './common/guards/sliding-throttler.guard';
@@ -46,10 +48,12 @@ import { LocalStrategy } from './auth/local.strategy';
     }),
     UsersModule,
     AuthModule,
-    RolesModule,
     MasterDataModule,
     AssetsModule,
     AssetLifecycleModule,
+    PerbaikanModule,
+    MutasiModule,
+    PemusnahanModule,
   ],
   controllers: [AppController],
   providers: [

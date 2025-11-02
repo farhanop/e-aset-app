@@ -1,3 +1,14 @@
+# =====================================================
+# 🛡️ GITIGNORE for Vite + React (Production Safe)
+# Project: e-aset-app Frontend
+# Author: farhanop
+# =====================================================
+
+# Environment files (never upload!)
+.env
+.env.*
+!.env.example
+
 # Logs
 logs
 *.log
@@ -7,18 +18,48 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependency directories
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
 *.local
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Test coverage
+coverage/
+*.lcov
+
+# Local dev tools / cache
+.cache/
+.eslintcache
+.stylelintcache
+vite.config.local.*
+vite.config.dev.*
+
+# Lockfiles (optional — uncomment if using one package manager only)
+# yarn.lock
+# package-lock.json
+# pnpm-lock.yaml

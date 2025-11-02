@@ -1,3 +1,4 @@
+// frontend\src\components\forms\LokasiForm.tsx
 import React, { useState, useEffect } from "react";
 import api from "../../api/axios";
 import { useTheme } from "../../contexts/ThemeContext";

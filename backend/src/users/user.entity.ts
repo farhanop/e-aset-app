@@ -1,11 +1,7 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToMany,
-  JoinTable,
-} from 'typeorm';
-import { Role } from '../roles/entities/role.entity';
+// backend\src\users\user.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { PeminjamanBarang } from 'src/entities/peminjaman-barang.entity';
+import { PengembalianBarang } from 'src/entities/pengembalian-barang.entity';
 
 @Entity({ name: 'tbl_users' })
 export class User {
@@ -21,7 +17,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ select: false }) 
+  @Column({ select: false })
   password: string;
 
   @Column({
@@ -34,14 +30,22 @@ export class User {
   @Column({ type: 'varchar', length: 20, nullable: true })
   nomor_telepon: string;
 
+  @Column({
+    type: 'enum',
+    enum: ['super-admin', 'admin', 'staff'],
+    default: 'staff',
+  })
+  role: string;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   foto_profil: string;
 
-  @ManyToMany(() => Role, (role) => role.users)
-  @JoinTable({
-    name: 'tbl_user_roles',
-    joinColumn: { name: 'id_user', referencedColumnName: 'id_user' },
-    inverseJoinColumn: { name: 'id_role', referencedColumnName: 'id_role' },
-  })
-  roles: Role[];
+  @OneToMany(() => PeminjamanBarang, (peminjaman) => peminjaman.petugasPinjam)
+  peminjamanBarang: PeminjamanBarang[];
+
+  @OneToMany(
+    () => PengembalianBarang,
+    (pengembalian) => pengembalian.petugasKembali,
+  )
+  pengembalianBarang: PengembalianBarang[];
 }

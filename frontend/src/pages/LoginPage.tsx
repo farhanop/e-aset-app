@@ -18,19 +18,25 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      console.log("Attempting login...");
+      console.log("=== LOGIN DEBUG START ===");
+      console.log("Attempting login with username:", username);
 
-      // 1. Login untuk mendapatkan token
+      // 1. Login untuk mendapatkan token DAN user data
       const response = await api.post("/auth/login", {
         username,
         password,
       });
 
       console.log("Login response:", response.data);
-      const { access_token } = response.data;
+
+      const { access_token, user: userDataFromLogin } = response.data;
 
       if (!access_token) {
         throw new Error("Token tidak ditemukan dalam response");
+      }
+
+      if (!userDataFromLogin) {
+        throw new Error("User data tidak ditemukan dalam response login");
       }
 
       // 2. Simpan token ke localStorage
@@ -41,21 +47,34 @@ export function LoginPage() {
       api.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
       console.log("Authorization header set");
 
-      // 4. Tunggu sebentar untuk memastikan token tersimpan dengan benar
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // 4. Gunakan user data DARI RESPONSE LOGIN (bukan dari profile)
+      const userData: User = userDataFromLogin;
 
-      // 5. Ambil data profil user
-      console.log("Fetching user profile...");
-      const profileResponse = await api.get("/auth/profile");
-      console.log("Profile response:", profileResponse.data);
+      console.log("User data from login response:", userData);
+      console.log("User role:", userData.role);
+      console.log("User role type:", typeof userData.role);
 
-      const userData: User = profileResponse.data;
+      // 5. Validasi role
+      if (!userData.role) {
+        console.error("User role is undefined!");
+        throw new Error("Role user tidak ditemukan");
+      }
 
-      // 6. Gunakan AuthContext login function
+      const validRoles = ["super-admin", "admin", "staff"];
+      if (!validRoles.includes(userData.role)) {
+        console.error(`Invalid role: ${userData.role}`);
+        throw new Error(`Role tidak valid: ${userData.role}`);
+      }
+
+      console.log(`Role validation passed: ${userData.role}`);
+
+      // 6. Gunakan AuthContext login function dengan user data dari login response
       await login(access_token, userData);
       console.log("Login process completed successfully");
+      console.log("=== LOGIN DEBUG END ===");
     } catch (err: any) {
-      console.error("Login error:", err);
+      console.error("Login error details:", err);
+      console.error("Login error response:", err.response?.data);
 
       // Hapus token yang mungkin sudah tersimpan jika terjadi error
       localStorage.removeItem("access_token");

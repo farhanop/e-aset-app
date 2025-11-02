@@ -15,7 +15,7 @@ import { SlidingThrottlerGuard } from '../common/guards/sliding-throttler.guard'
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: 'bpt@uigm',
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '8h' },
     }),
   ],
   controllers: [AuthController],

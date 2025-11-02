@@ -12,12 +12,10 @@ import {
   UnauthorizedException,
   NotFoundException,
   Delete,
-} from '@nestjs/common';
-import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
-  Request as NestRequest,
+  HttpException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -31,6 +29,9 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SlidingThrottlerGuard } from '../common/guards/sliding-throttler.guard';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+import type { Express } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -41,185 +42,264 @@ export class AuthController {
     private slidingThrottlerGuard: SlidingThrottlerGuard,
   ) {}
 
-  // Aturan yang lebih ketat KHUSUS untuk endpoint login
-  // Aturan ini akan menimpa (override) aturan global yang ada di app.module.ts
-  @Throttle({ default: { limit: 50, ttl: 1800 } }) // 50 requests per 30 minutes
+  @Throttle({ default: { limit: 50, ttl: 1800 } })
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Request() req) {
-    return this.authService.login(req.user);
+    console.log('=== 🚀 LOGIN ENDPOINT CALLED ===');
+    console.log('📨 Request user object from guard:', req.user);
+    if (!req.user) {
+      console.log('❌ No user data found in request after LocalAuthGuard');
+      throw new UnauthorizedException(
+        'User data tidak ditemukan setelah validasi',
+      );
+    }
+    const loginResult = await this.authService.login(req.user);
+    console.log('=== ✅ LOGIN ENDPOINT COMPLETED ===');
+    return loginResult;
   }
 
-  // Melewati (skip) rate limit untuk endpoint profile
   @SkipThrottle()
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async getProfile(@Request() req) {
-    console.log('Profile endpoint called with user:', req.user);
-
-    // Perbaikan: Coba semua kemungkinan lokasi ID user
-    const userId = req.user.sub || req.user.id_user || req.user.userId;
-
+    console.log('👤 GET /profile endpoint called. User from token:', req.user);
+    const userId = req.user.sub || req.user.id_user;
     if (!userId) {
-      console.error('User object does not contain ID:', req.user);
-      throw new UnauthorizedException('Token tidak memiliki ID pengguna.');
+      console.error('❌ User object from token does not contain ID:', req.user);
+      throw new UnauthorizedException(
+        'Token tidak valid atau tidak memiliki ID pengguna.',
+      );
     }
+    console.log('🔍 Extracted userId from token:', userId);
 
-    console.log('Extracted userId:', userId);
-
-    // ✅ Ambil data user dari database
     const user = await this.usersService.findOneById(userId);
-
     if (!user) {
-      throw new NotFoundException('User tidak ditemukan.');
+      console.error(`❌ User with ID ${userId} not found in database.`);
+      throw new NotFoundException(`User dengan ID ${userId} tidak ditemukan.`);
     }
 
-    // ✅ Tambahkan informasi session ke response
     const sessionInfo = this.slidingThrottlerGuard.getUserSessionInfo(userId);
+    console.log('ℹ️ Session info for user:', sessionInfo);
 
-    // ✅ Kembalikan user data tanpa password
-    const result = {
-      ...user,
-      sessionInfo,
-    };
-
-    console.log('Profile data to be sent:', result);
-
+    const result = { ...user, sessionInfo };
+    console.log('📤 Sending profile data:', result);
     return result;
   }
 
-  // Endpoint untuk update profil
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
-  async updateProfile(
-    @Request() req,
-    @Body(new ValidationPipe()) updateProfileDto: UpdateProfileDto,
-  ) {
-    const userId = req.user.sub; // Ambil ID user dari JWT (sub)
-    return this.authService.updateProfile(userId, updateProfileDto);
-  }
-
-  // Endpoint untuk mengupload foto profil (disimpan di ./uploads/profile-photos)
-  @UseGuards(JwtAuthGuard)
-  @Post('profile/upload-photo')
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileInterceptor('foto_profil_file', {
       storage: diskStorage({
-        destination: './uploads/profile-photos',
+        destination: './uploads/foto_profil',
         filename: (req, file, cb) => {
           const randomName = Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
-          return cb(null, `${randomName}${extname(file.originalname)}`);
+          const fileExt = extname(file.originalname);
+          const filename = `${randomName}${fileExt}`;
+          console.log(`📁 Generated filename: ${filename}`);
+          cb(null, filename);
         },
       }),
       fileFilter: (req, file, cb) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-          return cb(new Error('Only image files are allowed!'), false);
+        console.log(`🔍 File filter checking: ${file.originalname}`);
+        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/i)) {
+          console.log(`❌ File type rejected: ${file.mimetype}`);
+          return cb(
+            new BadRequestException(
+              'Hanya file gambar (JPG, JPEG, PNG, GIF) yang diizinkan!',
+            ),
+            false,
+          );
         }
+        console.log(`✅ File type accepted: ${file.mimetype}`);
         cb(null, true);
       },
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
+        fileSize: 10 * 1024 * 1024, // 10MB limit
       },
     }),
   )
-  async uploadProfilePhoto(
-    @NestRequest() req,
+  async updateProfile(
+    @Request() req,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
+    console.log('=== 🔄 PATCH /profile endpoint called ===');
+    const userId = req.user.sub;
+
+    if (!userId) {
+      console.error('❌ User ID not found in token:', req.user);
+      throw new UnauthorizedException('Token tidak valid');
     }
 
-    const newPath = `/uploads/profile-photos/${file.filename}`;
+    console.log(`👤 User ID: ${userId}`);
+    console.log('📄 Raw req.body:', req.body);
+    console.log(
+      '📁 File received:',
+      file
+        ? {
+            filename: file.filename,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          }
+        : 'No file',
+    );
 
-    // If user exists in request (JwtAuthGuard), try to delete previous photo and persist new path
+    // 🔧 PERBAIKAN: Pastikan folder uploads exists
     try {
-      const userId = req.user?.sub;
-      if (userId) {
-        const existing = await this.usersService.findOneById(userId);
-        if (existing && existing.foto_profil) {
-          // Delete only if it's an uploads path under profile-photos
-          const fp = existing.foto_profil;
-          if (fp && fp.startsWith('/uploads/profile-photos/')) {
-            const absoluteOld = join(process.cwd(), fp);
+      await fs.access('./uploads/foto_profil');
+    } catch (error) {
+      console.log('📁 Creating uploads directory...');
+      await fs.mkdir('./uploads/foto_profil', { recursive: true });
+    }
+
+    // Validasi DTO dari form data
+    const dtoInstance = plainToInstance(UpdateProfileDto, req.body);
+    console.log('🔄 DTO instance created:', dtoInstance);
+
+    const errors = await validate(dtoInstance);
+    if (errors.length > 0) {
+      console.error('❌ DTO validation failed:', errors);
+      const errorMessages = errors
+        .map((err) => Object.values(err.constraints || {}))
+        .flat();
+      throw new BadRequestException(
+        `Validasi gagal: ${errorMessages.join('; ')}`,
+      );
+    }
+    console.log('✅ DTO validation successful');
+
+    // 🔧 PERBAIKAN: Handle photo removal dan upload
+    const wantsToDeletePhoto = req.body.foto_profil_remove === 'true';
+    const hasNewPhoto = !!file;
+
+    console.log(`🗑️ Delete photo requested: ${wantsToDeletePhoto}`);
+    console.log(`🖼️ New photo uploaded: ${hasNewPhoto}`);
+
+    // Handle penghapusan foto lama jika ada foto baru atau request hapus
+    if (hasNewPhoto || wantsToDeletePhoto) {
+      try {
+        const existingUser = await this.usersService.findOneById(userId);
+        if (existingUser?.foto_profil) {
+          const oldPhotoPath = existingUser.foto_profil;
+          // Hapus hanya jika foto berasal dari upload directory kita
+          if (oldPhotoPath.startsWith('/uploads/foto_profil/')) {
+            const absoluteOldPath = join(
+              process.cwd(),
+              'uploads',
+              'foto_profil',
+              oldPhotoPath.split('/').pop()!,
+            );
             try {
-              await fs.unlink(absoluteOld);
-            } catch (err) {
-              // ignore unlink errors (file may not exist)
-              console.warn(
-                'Could not delete old profile photo:',
-                absoluteOld,
-                err.message || err,
+              await fs.unlink(absoluteOldPath);
+              console.log(
+                `🗑️ Successfully deleted old photo: ${absoluteOldPath}`,
               );
+            } catch (err) {
+              console.warn(`⚠️ Could not delete old photo: ${err.message}`);
             }
           }
-
-          // Persist new foto_profil on user
-          const updated = await this.usersService.update(userId, {
-            foto_profil: newPath,
-          } as any);
-          return {
-            message: 'Profile photo uploaded and profile updated',
-            url: newPath,
-            filename: file.filename,
-            user: updated,
-          };
         }
+      } catch (error) {
+        console.warn(
+          '⚠️ Error fetching existing user for photo cleanup:',
+          error.message,
+        );
       }
-    } catch (err) {
-      console.warn('Error while handling previous profile photo cleanup:', err);
     }
 
-    // Fallback: return the path, client may PATCH profile later
-    return {
-      message: 'Profile photo uploaded successfully',
-      url: newPath,
-      filename: file.filename,
-    };
+    // 🔧 PERBAIKAN: Set foto_profil dalam DTO berdasarkan kondisi
+    if (file) {
+      dtoInstance.foto_profil = `/uploads/foto_profil/${file.filename}`;
+      console.log(`🖼️ New photo path set: ${dtoInstance.foto_profil}`);
+    } else if (wantsToDeletePhoto) {
+      dtoInstance.foto_profil = '';
+      console.log('🗑️ Photo set to empty string for deletion');
+    }
+    // Jika tidak ada file dan tidak hapus foto, biarkan undefined (tidak update field foto)
+
+    console.log('💾 Final DTO for update:', dtoInstance);
+
+    try {
+      const updatedUser = await this.authService.updateProfile(
+        userId,
+        dtoInstance,
+      );
+      console.log('✅ Profile updated successfully');
+      return updatedUser;
+    } catch (error) {
+      console.error('❌ Error in authService.updateProfile:', error);
+
+      // 🔧 PERBAIKAN: Rollback file upload jika update gagal
+      if (file) {
+        try {
+          const filePath = `./uploads/foto_profil/${file.filename}`;
+          await fs.unlink(filePath);
+          console.log(`🗑️ Rollback: Deleted uploaded file ${file.filename}`);
+        } catch (rollbackError) {
+          console.warn(
+            '⚠️ Could not rollback uploaded file:',
+            rollbackError.message,
+          );
+        }
+      }
+
+      throw error;
+    }
   }
 
-  // Endpoint untuk ganti password
   @UseGuards(JwtAuthGuard)
   @Post('profile/change-password')
   async changePassword(
     @Request() req,
-    @Body(new ValidationPipe()) changePasswordDto: ChangePasswordDto,
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    changePasswordDto: ChangePasswordDto,
   ) {
-    const userId = req.user.sub; // Ambil ID user dari JWT (sub)
+    console.log(
+      `🔑 POST /profile/change-password called for userId: ${req.user.sub}`,
+    );
+    const userId = req.user.sub;
     return this.authService.changePassword(userId, changePasswordDto);
   }
 
-  // Endpoint untuk logout manual
   @UseGuards(JwtAuthGuard)
-  @Delete('logout')
+  @Delete('sessions/others')
   async logoutOtherSessions(@Request() req) {
+    console.log(
+      `💨 DELETE /sessions/others called for userId: ${req.user.sub}`,
+    );
     const userId = req.user.sub;
     const currentToken = req.headers.authorization?.replace('Bearer ', '');
-
-    // Hapus semua session kecuali yang saat ini
+    if (!currentToken) {
+      console.warn('⚠️ Could not extract current token from headers.');
+    }
     const result = await this.slidingThrottlerGuard.clearUserSessions(
       userId,
       currentToken,
+    );
+    console.log(
+      `✅ Cleared other sessions for userId ${userId}. Result: ${result}`,
     );
 
     return {
       message: result
         ? 'Semua session lain berhasil dihapus'
-        : 'Tidak ada session lain yang aktif',
+        : 'Tidak ada session lain yang aktif atau gagal menghapus',
       success: result,
     };
   }
 
-  // Endpoint untuk mendapatkan status session
   @UseGuards(JwtAuthGuard)
   @Get('session-status')
   getSessionStatus(@Request() req) {
     const userId = req.user.sub;
+    console.log(`ℹ️ GET /session-status called for userId: ${userId}`);
     const status = this.slidingThrottlerGuard.getUserActivityStatus(userId);
-
+    console.log('ℹ️ Session status result:', status);
     return {
       userId,
       status: status
@@ -228,26 +308,31 @@ export class AuthController {
             timeRemaining: status.timeRemaining,
             lastActivity: status.lastActivity,
             username: status.username,
-            isNearTimeout: status.timeRemaining <= 2 * 60 * 1000, // 2 menit
+            isNearTimeout: status.timeRemaining <= 2 * 60 * 1000,
           }
-        : {
-            isActive: false,
-            message: 'Tidak ada session aktif',
-          },
+        : { isActive: false, message: 'Tidak ada session aktif terdeteksi' },
     };
   }
 
-  // Endpoint untuk admin melihat active sessions (opsional)
   @UseGuards(JwtAuthGuard)
   @Get('admin/active-sessions')
   getActiveSessions(@Request() req) {
-    // Tambahkan authorization check di sini untuk role admin jika diperlukan
-    // if (!req.user.roles.includes('admin')) {
-    //   throw new UnauthorizedException('Akses ditolak');
-    // }
-
+    console.log(
+      `🛡️ GET /admin/active-sessions called by user: ${req.user.username} (Role: ${req.user.role})`,
+    );
+    if (req.user.role !== 'super-admin' && req.user.role !== 'admin') {
+      console.warn(
+        `🚫 Unauthorized access attempt to /admin/active-sessions by user ${req.user.username}`,
+      );
+      throw new UnauthorizedException(
+        'Akses ditolak. Memerlukan peran admin atau super-admin.',
+      );
+    }
     const activeSessions = this.slidingThrottlerGuard.getActiveSessions();
     const cacheStats = this.slidingThrottlerGuard.getCacheStats();
+    console.log(
+      `📊 Returning ${activeSessions.length} active sessions and cache stats.`,
+    );
 
     return {
       cacheStats,

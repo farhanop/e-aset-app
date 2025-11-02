@@ -1,4 +1,3 @@
-// src/auth/local.strategy.ts
 import { Strategy } from 'passport-local';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
@@ -11,10 +10,22 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(username: string, password: string): Promise<any> {
+    console.log('🔐 LocalStrategy validating:', username);
+
     const user = await this.authService.validateUser(username, password);
+
     if (!user) {
-      throw new UnauthorizedException('Username atau password salah');
+      console.log('❌ LocalStrategy: Validation failed');
+      throw new UnauthorizedException();
     }
+
+    console.log('✅ LocalStrategy: Validation successful. User:', {
+      id: user.id_user,
+      username: user.username,
+      role: user.role,
+      nama_lengkap: user.nama_lengkap,
+    });
+
     return user;
   }
 }
