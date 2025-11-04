@@ -2,7 +2,7 @@
 import axios from "axios";
 
 // Gunakan environment variable atau fallback
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://10.0.0.30:3000/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 console.log('API Base URL:', API_BASE_URL);
 
