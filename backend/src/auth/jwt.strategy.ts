@@ -10,14 +10,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'bpt@uigm', // Gunakan environment variable
+      secretOrKey: process.env.JWT_SECRET || 'bpt@uigm',
     });
   }
 
   async validate(payload: any) {
     return {
       sub: payload.sub,
-      userId: payload.sub,
       username: payload.username,
       role: payload.role,
       email: payload.email,

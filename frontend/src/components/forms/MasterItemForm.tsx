@@ -1,8 +1,11 @@
 // frontend\src\components\forms\MasterItemForm.tsx
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import api from "../../api/axios";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useForm, Controller } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 
+// --- TIPE DATA ---
 interface Kategori {
   id_kategori: number;
   nama_kategori: string;
@@ -17,42 +20,56 @@ interface ItemData {
   umur_ekonomis?: number | string;
 }
 
+// --- PROPS (Diperbaiki) ---
 interface FormProps {
   initialData: Partial<ItemData> | null;
-  onSave: (data: ItemData) => void;
+  onSave: (data: ItemData) => Promise<void>; // 1. Diubah ke Promise
   onCancel: () => void;
+  isLoading: boolean; // 2. Ditambahkan: Menerima status loading dari parent
 }
 
-export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
+// --- Fungsi Fetching untuk useQuery ---
+const fetchKategori = async (): Promise<Kategori[]> => {
+  const response = await api.get("/master-data/kategori-item");
+  // Menyesuaikan dengan berbagai kemungkinan struktur data
+  return response.data.data || response.data || [];
+};
+
+export function MasterItemForm({
+  initialData,
+  onSave,
+  onCancel,
+  isLoading, // Menerima isPending/isLoading dari mutasi
+}: FormProps) {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState<ItemData>({
-    kode_item: "",
-    nama_item: "",
-    id_kategori: "",
-    metode_pelacakan: "",
-    umur_ekonomis: "",
-  });
-  const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const isEditMode = !!initialData?.id_item;
 
-  useEffect(() => {
-    const fetchKategori = async () => {
-      try {
-        const response = await api.get("/master-data/kategori-item");
-        setKategoriList(response.data);
-      } catch (error) {
-        console.error("Error fetching kategori:", error);
-      }
-    };
+  // 3. Mengambil data dropdown dengan useQuery
+  const { data: kategoriList = [], isLoading: loadingKategori } = useQuery({
+    queryKey: ["kategoriList"],
+    queryFn: fetchKategori,
+  });
 
-    fetchKategori();
-  }, []);
+  // 4. Setup react-hook-form (menggantikan semua useState)
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ItemData>({
+    defaultValues: {
+      kode_item: "",
+      nama_item: "",
+      id_kategori: "",
+      metode_pelacakan: "",
+      umur_ekonomis: "",
+    },
+  });
 
+  // 5. Efek untuk mengisi form (menggantikan useEffect lama)
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         kode_item: initialData.kode_item || "",
         nama_item: initialData.nama_item || "",
         id_kategori: initialData.id_kategori || "",
@@ -60,7 +77,8 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         umur_ekonomis: initialData.umur_ekonomis || "",
       });
     } else {
-      setFormData({
+      // Reset ke default jika mode create
+      reset({
         kode_item: "",
         nama_item: "",
         id_kategori: "",
@@ -68,99 +86,38 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         umur_ekonomis: "",
       });
     }
-    setErrors({});
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.kode_item.trim()) {
-      newErrors.kode_item = "Kode item wajib diisi";
-    } else if (!/^[a-zA-Z0-9]{1,4}$/.test(formData.kode_item)) {
-      newErrors.kode_item = "Kode item harus 1-4 karakter (huruf/angka)";
-    }
-
-    if (!formData.nama_item.trim()) {
-      newErrors.nama_item = "Nama item wajib diisi";
-    } else if (formData.nama_item.length > 100) {
-      newErrors.nama_item = "Nama item maksimal 100 karakter";
-    }
-
-    if (!formData.id_kategori) {
-      newErrors.id_kategori = "Kategori wajib dipilih";
-    }
-
-    if (!formData.metode_pelacakan) {
-      newErrors.metode_pelacakan = "Metode pelacakan wajib dipilih";
-    }
-
-    if (formData.umur_ekonomis && Number(formData.umur_ekonomis) <= 0) {
-      newErrors.umur_ekonomis = "Umur ekonomis harus lebih dari 0";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  // 6. Fungsi onSubmit (menggantikan handleSubmit lama)
+  const onSubmit = (data: ItemData) => {
+    // Menyiapkan data untuk dikirim
+    const dataToSubmit = {
+      ...data,
+      id_kategori: Number(data.id_kategori),
+      umur_ekonomis: data.umur_ekonomis
+        ? Number(data.umur_ekonomis)
+        : undefined,
+    };
+    // Memanggil fungsi onSave dari parent (yang merupakan mutasi)
+    onSave(dataToSubmit as ItemData);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-
-    // Special handling for kode_item to only allow letters and numbers
-    if (name === "kode_item") {
-      // Remove any non-alphanumeric characters (only allow a-z, A-Z, 0-9)
-      const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
-      setFormData({ ...formData, [name]: alphanumericValue });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const dataToSubmit = {
-        ...formData,
-        id_kategori: Number(formData.id_kategori),
-        umur_ekonomis: formData.umur_ekonomis
-          ? Number(formData.umur_ekonomis)
-          : undefined,
-      };
-
-      onSave(dataToSubmit as ItemData);
-    } catch (error: any) {
-      console.error("Error saving master item:", error);
-
-      if (error.response?.status === 400) {
-        const errorMessage =
-          error.response?.data?.message ||
-          Object.values(error.response?.data?.errors || {}).join(", ") ||
-          "Data tidak valid";
-        alert(`Gagal menyimpan data: ${errorMessage}`);
-      } else if (error.response?.status === 409) {
-        alert("Kode item sudah digunakan");
-      } else {
-        alert("Gagal menyimpan data. Silakan coba lagi.");
-      }
-    } finally {
-      setLoading(false);
-    }
+  // Helper untuk kelas CSS
+  const getDynamicInputClass = (fieldName: keyof ItemData) => {
+    const hasError = !!errors[fieldName];
+    return `block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 ${
+      hasError
+        ? "border-red-500" // Kelas error
+        : theme === "dark"
+        ? "border-gray-600 bg-gray-700 text-white" // Kelas dark
+        : "border-gray-300" // Kelas light
+    }`;
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    // 7. Ganti form untuk menggunakan handleSubmit dari RHF
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Kategori Item */}
       <div>
         <label
           htmlFor="id_kategori"
@@ -170,8 +127,6 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           Kategori Item <span className="text-red-500">*</span>
         </label>
-
-        {/* Catatan contoh input */}
         <div
           className={`text-xs mt-1 mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
@@ -179,43 +134,42 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           <p>Pilih kategori yang sesuai untuk item ini</p>
         </div>
-
-        <div className="mt-1">
-          <select
-            id="id_kategori"
-            name="id_kategori"
-            value={formData.id_kategori}
-            onChange={handleChange}
-            required
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.id_kategori
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-          >
-            <option value="" disabled>
-              Pilih Kategori
-            </option>
-            {kategoriList.map((k) => (
-              <option key={k.id_kategori} value={k.id_kategori}>
-                {k.nama_kategori}
+        <Controller
+          name="id_kategori"
+          control={control}
+          rules={{ required: "Kategori wajib dipilih" }}
+          render={({ field }) => (
+            <select
+              {...field}
+              id="id_kategori"
+              required
+              disabled={loadingKategori || isLoading}
+              className={getDynamicInputClass("id_kategori")}
+              value={field.value || ""}
+            >
+              <option value="" disabled>
+                {loadingKategori ? "Memuat..." : "Pilih Kategori"}
               </option>
-            ))}
-          </select>
-        </div>
+              {kategoriList.map((k) => (
+                <option key={k.id_kategori} value={k.id_kategori}>
+                  {k.nama_kategori}
+                </option>
+              ))}
+            </select>
+          )}
+        />
         {errors.id_kategori && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.id_kategori}
+            {errors.id_kategori.message}
           </p>
         )}
       </div>
 
+      {/* Metode Pelacakan */}
       <div>
         <label
           htmlFor="metode_pelacakan"
@@ -225,8 +179,6 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           Metode Pelacakan <span className="text-red-500">*</span>
         </label>
-
-        {/* Catatan contoh input */}
         <div
           className={`text-xs mt-1 mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
@@ -234,40 +186,39 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           <p>Pilih metode pelacakan untuk item ini</p>
         </div>
-
-        <div className="mt-1">
-          <select
-            id="metode_pelacakan"
-            name="metode_pelacakan"
-            value={formData.metode_pelacakan}
-            onChange={handleChange}
-            required
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.metode_pelacakan
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-          >
-            <option value="" disabled>
-              Pilih Metode
-            </option>
-            <option value="Individual">Individual (per Unit)</option>
-            <option value="Stok">Stok (per Jumlah)</option>
-          </select>
-        </div>
+        <Controller
+          name="metode_pelacakan"
+          control={control}
+          rules={{ required: "Metode pelacakan wajib dipilih" }}
+          render={({ field }) => (
+            <select
+              {...field}
+              id="metode_pelacakan"
+              required
+              disabled={isLoading}
+              className={getDynamicInputClass("metode_pelacakan")}
+              value={field.value || ""}
+            >
+              <option value="" disabled>
+                Pilih Metode
+              </option>
+              <option value="Individual">Individual (per Unit)</option>
+              <option value="Stok">Stok (per Jumlah)</option>
+            </select>
+          )}
+        />
         {errors.metode_pelacakan && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.metode_pelacakan}
+            {errors.metode_pelacakan.message}
           </p>
         )}
       </div>
 
+      {/* Kode Item */}
       <div>
         <label
           htmlFor="kode_item"
@@ -277,50 +228,55 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           Kode Item (SKU) <span className="text-red-500">*</span>
         </label>
-
-        {/* Catatan contoh input */}
         <div
           className={`text-xs mt-1 mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">A1, B2, T01, K04, CPU, LCD, PRN</span>
-          </p>
           <p>Maksimal 4 karakter (huruf/angka, tanpa spasi)</p>
         </div>
-
-        <div className="mt-1">
-          <input
-            id="kode_item"
-            type="text"
-            name="kode_item"
-            value={formData.kode_item}
-            onChange={handleChange}
-            required
-            maxLength={4}
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.kode_item
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-            placeholder="Contoh: CPU"
-          />
-        </div>
+        <Controller
+          name="kode_item"
+          control={control}
+          rules={{
+            required: "Kode item wajib diisi",
+            pattern: {
+              value: /^[a-zA-Z0-9]{1,4}$/,
+              message: "Kode item harus 1-4 karakter (huruf/angka)",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="kode_item"
+              type="text"
+              // Terapkan logika formatting Anda di sini
+              onChange={(e) => {
+                const formattedValue = e.target.value
+                  .replace(/[^a-zA-Z0-9]/g, "")
+                  .toUpperCase();
+                field.onChange(formattedValue);
+              }}
+              required
+              maxLength={4}
+              disabled={isLoading}
+              className={getDynamicInputClass("kode_item")}
+              placeholder="Contoh: CPU"
+            />
+          )}
+        />
         {errors.kode_item && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.kode_item}
+            {errors.kode_item.message}
           </p>
         )}
       </div>
 
+      {/* Nama Item */}
       <div>
         <label
           htmlFor="nama_item"
@@ -330,52 +286,48 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           Nama Item <span className="text-red-500">*</span>
         </label>
-
-        {/* Catatan contoh input untuk nama item */}
         <div
           className={`text-xs mt-1 mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              Laptop Dell, Meja Kantor, Kursi Staff, Proyektor Epson
-            </span>
-          </p>
           <p>Maksimal 100 karakter</p>
         </div>
-
-        <div className="mt-1">
-          <input
-            id="nama_item"
-            type="text"
-            name="nama_item"
-            value={formData.nama_item}
-            onChange={handleChange}
-            required
-            maxLength={100}
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.nama_item
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-            placeholder="Contoh: Laptop Dell"
-          />
-        </div>
+        <Controller
+          name="nama_item"
+          control={control}
+          rules={{
+            required: "Nama item wajib diisi",
+            maxLength: {
+              value: 100,
+              message: "Nama item maksimal 100 karakter",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="nama_item"
+              type="text"
+              required
+              maxLength={100}
+              disabled={isLoading}
+              className={getDynamicInputClass("nama_item")}
+              placeholder="Contoh: Laptop Dell"
+            />
+          )}
+        />
         {errors.nama_item && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.nama_item}
+            {errors.nama_item.message}
           </p>
         )}
       </div>
 
+      {/* Umur Ekonomis */}
       <div>
         <label
           htmlFor="umur_ekonomis"
@@ -385,8 +337,6 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           Umur Ekonomis (Tahun, Opsional)
         </label>
-
-        {/* Catatan contoh input untuk umur ekonomis */}
         <div
           className={`text-xs mt-1 mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
@@ -394,41 +344,48 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         >
           <p>Masukkan umur ekonomis item dalam tahun (contoh: 5)</p>
         </div>
-
-        <div className="mt-1">
-          <input
-            id="umur_ekonomis"
-            type="number"
-            name="umur_ekonomis"
-            value={formData.umur_ekonomis}
-            onChange={handleChange}
-            min="1"
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.umur_ekonomis
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-            placeholder="Contoh: 5"
-          />
-        </div>
+        <Controller
+          name="umur_ekonomis"
+          control={control}
+          rules={{
+            min: { value: 1, message: "Umur ekonomis harus lebih dari 0" },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="umur_ekonomis"
+              type="number"
+              min="1"
+              disabled={isLoading}
+              className={getDynamicInputClass("umur_ekonomis")}
+              placeholder="Contoh: 5"
+              // Menangani nilai opsional (agar tidak 0)
+              onChange={(e) =>
+                field.onChange(
+                  e.target.value === "" ? "" : Number(e.target.value)
+                )
+              }
+              value={field.value || ""}
+            />
+          )}
+        />
         {errors.umur_ekonomis && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.umur_ekonomis}
+            {errors.umur_ekonomis.message}
           </p>
         )}
       </div>
 
+      {/* Tombol Aksi */}
       <div className="flex justify-end space-x-3 pt-5">
         <button
           type="button"
           onClick={onCancel}
-          disabled={loading}
+          disabled={isLoading} // Menggunakan isLoading dari props
           className={`px-4 py-2 text-sm font-medium rounded-md ${
             theme === "dark"
               ? "text-gray-200 bg-gray-600 hover:bg-gray-700"
@@ -439,12 +396,12 @@ export function MasterItemForm({ initialData, onSave, onCancel }: FormProps) {
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={isLoading || loadingKategori} // Nonaktifkan jika form loading ATAU dropdown loading
           className={`px-4 py-2 text-sm font-medium text-white rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 flex items-center transition-colors duration-200 ${
             theme === "dark" ? "hover:bg-blue-600" : "hover:bg-blue-700"
           }`}
         >
-          {loading ? (
+          {isLoading ? ( // Menggunakan isLoading dari props
             <>
               <svg
                 className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"

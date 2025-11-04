@@ -1,4 +1,4 @@
-// frontend\src\components\peminjaman\PengembalianModal.tsx
+// frontend/src/components/peminjaman/PengembalianModal.tsx
 import React, { useState } from "react";
 import { usePeminjaman } from "../../hooks/usePeminjaman";
 import { Peminjaman } from "../../types/peminjaman";
@@ -16,18 +16,31 @@ export const PengembalianModal: React.FC<PengembalianModalProps> = ({
 }) => {
   const { kembalikan, kembalikanLoading } = usePeminjaman();
   const [kondisiKembali, setKondisiKembali] = useState<string>("Baik");
+  const [keterangan, setKeterangan] = useState<string>("");
+  const [tglKembali, setTglKembali] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await kembalikan({
-        // Fix: Convert id_peminjaman from string to number
-        id: Number(peminjaman.id_peminjaman),
-        data: { kondisi_kembali: kondisiKembali },
+        id_peminjaman: peminjaman.id_peminjaman,
+        data: {
+          tgl_aktual_kembali: new Date(tglKembali), // Pastikan ini adalah objek Date
+          kondisi_kembali: kondisiKembali,
+          keterangan_pengembalian: keterangan,
+        },
       });
       onClose();
     } catch (error) {
       console.error("Gagal mengembalikan:", error);
+      if (error && typeof error === "object" && "response" in error) {
+        const err = error as any;
+        alert(err.response?.data?.message || "Gagal mengembalikan aset");
+      } else {
+        alert("Gagal mengembalikan aset");
+      }
     }
   };
 
@@ -57,6 +70,18 @@ export const PengembalianModal: React.FC<PengembalianModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Tanggal Pengembalian
+              </label>
+              <input
+                type="date"
+                value={tglKembali}
+                onChange={(e) => setTglKembali(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Kondisi Saat Dikembalikan
               </label>
               <select
@@ -68,6 +93,18 @@ export const PengembalianModal: React.FC<PengembalianModalProps> = ({
                 <option value="Rusak Ringan">Rusak Ringan</option>
                 <option value="Rusak Berat">Rusak Berat</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Keterangan (Opsional)
+              </label>
+              <textarea
+                value={keterangan}
+                onChange={(e) => setKeterangan(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                rows={3}
+              />
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">

@@ -21,7 +21,7 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   const [imageError, setImageError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://10.0.0.30:3000';
   
   const handleDownload = async () => {
     if (!asset.file_qrcode || isDownloading) return;

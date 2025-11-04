@@ -1,8 +1,11 @@
 // frontend\src\components\forms\UnitKerjaForm.tsx
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import api from "../../api/axios";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useForm, Controller } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 
+// --- TIPE DATA ---
 interface UnitUtama {
   id_unit_utama: number;
   nama_unit_utama: string;
@@ -12,132 +15,122 @@ interface UnitKerjaData {
   id_unit_kerja?: number;
   kode_unit: string;
   nama_unit: string;
-  id_unit_utama: number | string;
+  id_unit_utama: number | null; // Diubah dari 'string' ke 'number | null'
 }
 
+// --- PROPS (Diperbaiki) ---
 interface FormProps {
   initialData: Partial<UnitKerjaData> | null;
-  onSave: (data: UnitKerjaData) => void;
+  onSave: (data: UnitKerjaData) => Promise<void>; // 1. Diubah ke Promise
   onCancel: () => void;
+  isLoading: boolean; // 2. Ditambahkan: Menerima status loading dari parent
 }
 
-export function UnitKerjaForm({ initialData, onSave, onCancel }: FormProps) {
+// Tipe untuk error submit
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+// --- Fungsi Fetching untuk useQuery ---
+const fetchUnitUtama = async (): Promise<UnitUtama[]> => {
+  const response = await api.get("/master-data/unit-utama");
+  // Menyesuaikan dengan berbagai kemungkinan struktur data
+  return response.data.data || response.data || [];
+};
+
+export function UnitKerjaForm({
+  initialData,
+  onSave,
+  onCancel,
+  isLoading, // Menerima isPending/isLoading dari mutasi
+}: FormProps) {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState<UnitKerjaData>({
-    kode_unit: "",
-    nama_unit: "",
-    id_unit_utama: "",
-  });
-  const [unitUtamaList, setUnitUtamaList] = useState<UnitUtama[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const isEditMode = !!initialData?.id_unit_kerja;
 
-  useEffect(() => {
-    const fetchUnitUtama = async () => {
-      try {
-        const response = await api.get("/master-data/unit-utama");
-        setUnitUtamaList(response.data);
-      } catch (error) {
-        console.error("Error fetching unit utama:", error);
-      }
-    };
+  // 3. Mengambil data dropdown dengan useQuery
+  const { data: unitUtamaList = [], isLoading: loadingUnitUtama } = useQuery({
+    queryKey: ["unitUtamaList"],
+    queryFn: fetchUnitUtama,
+  });
 
-    fetchUnitUtama();
-  }, []);
+  // 4. Setup react-hook-form (menggantikan semua useState)
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors },
+  } = useForm<UnitKerjaData>({
+    defaultValues: {
+      kode_unit: "",
+      nama_unit: "",
+      id_unit_utama: null,
+    },
+  });
 
+  // 5. Efek untuk mengisi form (menggantikan useEffect lama)
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         kode_unit: initialData.kode_unit || "",
         nama_unit: initialData.nama_unit || "",
-        id_unit_utama: initialData.id_unit_utama?.toString() || "",
+        id_unit_utama: initialData.id_unit_utama
+          ? Number(initialData.id_unit_utama)
+          : null,
       });
     } else {
-      setFormData({ kode_unit: "", nama_unit: "", id_unit_utama: "" });
+      // Reset ke default jika mode create
+      reset({
+        kode_unit: "",
+        nama_unit: "",
+        id_unit_utama: null,
+      });
     }
-    setErrors({});
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.kode_unit.trim()) {
-      newErrors.kode_unit = "Kode unit wajib diisi";
-    } else if (!/^[a-zA-Z0-9]{1,4}$/.test(formData.kode_unit)) {
-      newErrors.kode_unit = "Kode unit harus 1-4 karakter (huruf/angka)";
-    }
-
-    if (!formData.nama_unit.trim()) {
-      newErrors.nama_unit = "Nama unit wajib diisi";
-    } else if (formData.nama_unit.length > 100) {
-      newErrors.nama_unit = "Nama unit maksimal 100 karakter";
-    }
-
-    if (!formData.id_unit_utama) {
-      newErrors.id_unit_utama = "Unit utama wajib dipilih";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-
-    // Special handling for kode_unit to only allow letters and numbers
-    if (name === "kode_unit") {
-      // Remove any non-alphanumeric characters (only allow a-z, A-Z, 0-9)
-      const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
-      setFormData({ ...formData, [name]: alphanumericValue });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
+  // 6. Fungsi onSubmit (menggantikan handleSubmit manual dan validateForm)
+  const onSubmit = async (data: UnitKerjaData) => {
+    const dataToSubmit = {
+      ...data,
+      id_unit_utama: Number(data.id_unit_utama),
+    };
     try {
-      const dataToSubmit = {
-        ...formData,
-        id_unit_utama: Number(formData.id_unit_utama),
-      };
-
-      onSave(dataToSubmit as UnitKerjaData);
-    } catch (error: any) {
+      // Memanggil onSave dari parent (yang merupakan mutasi)
+      await onSave(dataToSubmit as UnitKerjaData);
+    } catch (error) {
       console.error("Error saving unit kerja:", error);
+      const apiError = error as ApiError;
+      const message =
+        apiError.response?.data?.message ||
+        apiError.message ||
+        "Gagal menyimpan data. Silakan coba lagi.";
 
-      if (error.response?.status === 400) {
-        const errorMessage =
-          error.response?.data?.message ||
-          Object.values(error.response?.data?.errors || {}).join(", ") ||
-          "Data tidak valid";
-        alert(`Gagal menyimpan data: ${errorMessage}`);
-      } else if (error.response?.status === 409) {
-        alert("Kode unit sudah digunakan");
-      } else {
-        alert("Gagal menyimpan data. Silakan coba lagi.");
-      }
-    } finally {
-      setLoading(false);
+      // Menampilkan error submit global
+      setError("root.submit", { type: "manual", message });
     }
+  };
+
+  // Helper untuk kelas CSS
+  const getDynamicInputClass = (fieldName: keyof UnitKerjaData) => {
+    const hasError = !!errors[fieldName];
+    return `block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 ${
+      hasError
+        ? "border-red-500" // Kelas error
+        : theme === "dark"
+        ? "border-gray-600 bg-gray-700 text-white" // Kelas dark
+        : "border-gray-300" // Kelas light
+    }`;
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    // 7. Ganti form untuk menggunakan handleSubmit dari RHF
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Dropdown Unit Utama */}
       <div>
         <label
           htmlFor="id_unit_utama"
@@ -147,8 +140,6 @@ export function UnitKerjaForm({ initialData, onSave, onCancel }: FormProps) {
         >
           Induk Fakultas / Unit Utama <span className="text-red-500">*</span>
         </label>
-
-        {/* Catatan contoh input */}
         <div
           className={`text-xs mt-1 mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
@@ -158,43 +149,42 @@ export function UnitKerjaForm({ initialData, onSave, onCancel }: FormProps) {
             Pilih fakultas atau unit utama sebagai induk dari prodi/unit kerja
           </p>
         </div>
-
-        <div className="mt-1">
-          <select
-            id="id_unit_utama"
-            name="id_unit_utama"
-            value={formData.id_unit_utama}
-            onChange={handleChange}
-            required
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.id_unit_utama
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-          >
-            <option value="" disabled>
-              Pilih Unit Utama
-            </option>
-            {unitUtamaList.map((unit) => (
-              <option key={unit.id_unit_utama} value={unit.id_unit_utama}>
-                {unit.nama_unit_utama}
+        <Controller
+          name="id_unit_utama"
+          control={control}
+          rules={{ required: "Unit utama wajib dipilih" }}
+          render={({ field }) => (
+            <select
+              {...field}
+              id="id_unit_utama"
+              required
+              disabled={loadingUnitUtama || isLoading}
+              className={getDynamicInputClass("id_unit_utama")}
+              value={field.value || ""}
+            >
+              <option value="" disabled>
+                {loadingUnitUtama ? "Memuat..." : "Pilih Unit Utama"}
               </option>
-            ))}
-          </select>
-        </div>
+              {unitUtamaList.map((unit) => (
+                <option key={unit.id_unit_utama} value={unit.id_unit_utama}>
+                  {unit.nama_unit_utama}
+                </option>
+              ))}
+            </select>
+          )}
+        />
         {errors.id_unit_utama && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.id_unit_utama}
+            {errors.id_unit_utama.message}
           </p>
         )}
       </div>
 
+      {/* Input Kode Unit */}
       <div>
         <label
           htmlFor="kode_unit"
@@ -202,54 +192,56 @@ export function UnitKerjaForm({ initialData, onSave, onCancel }: FormProps) {
             theme === "dark" ? "text-gray-300" : "text-gray-700"
           }`}
         >
-          Kode Prodi <span className="text-red-500">*</span>
+          Kode Prodi / Unit <span className="text-red-500">*</span>
         </label>
-
-        {/* Catatan contoh input */}
         <div
           className={`text-xs mt-1 mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              TI, S1, INF, TIF, S2MT, BPT, AKT
-            </span>
-          </p>
           <p>Maksimal 4 karakter (huruf/angka, tanpa spasi)</p>
         </div>
-
-        <div className="mt-1">
-          <input
-            id="kode_unit"
-            type="text"
-            name="kode_unit"
-            value={formData.kode_unit}
-            onChange={handleChange}
-            maxLength={4}
-            required
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.kode_unit
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-            placeholder="Contoh: TI atau TIF"
-          />
-        </div>
+        <Controller
+          name="kode_unit"
+          control={control}
+          rules={{
+            required: "Kode unit wajib diisi",
+            pattern: {
+              value: /^[a-zA-Z0-9]{1,4}$/,
+              message: "Kode unit harus 1-4 karakter (huruf/angka)",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="kode_unit"
+              type="text"
+              onChange={(e) => {
+                const formattedValue = e.target.value
+                  .replace(/[^a-zA-Z0-9]/g, "")
+                  .toUpperCase();
+                field.onChange(formattedValue);
+              }}
+              maxLength={4}
+              required
+              disabled={isLoading}
+              className={getDynamicInputClass("kode_unit")}
+              placeholder="Contoh: TI atau TIF"
+            />
+          )}
+        />
         {errors.kode_unit && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.kode_unit}
+            {errors.kode_unit.message}
           </p>
         )}
       </div>
 
+      {/* Input Nama Unit */}
       <div>
         <label
           htmlFor="nama_unit"
@@ -259,57 +251,66 @@ export function UnitKerjaForm({ initialData, onSave, onCancel }: FormProps) {
         >
           Nama Prodi / Unit Kerja <span className="text-red-500">*</span>
         </label>
-
-        {/* Catatan contoh input untuk nama unit */}
         <div
           className={`text-xs mt-1 mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              Teknik Informatika, Sistem Informasi, Manajemen
-            </span>
-          </p>
           <p>Maksimal 100 karakter</p>
         </div>
-
-        <div className="mt-1">
-          <input
-            id="nama_unit"
-            type="text"
-            name="nama_unit"
-            value={formData.nama_unit}
-            onChange={handleChange}
-            maxLength={100}
-            required
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.nama_unit
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-            placeholder="Contoh: Teknik Informatika"
-          />
-        </div>
+        <Controller
+          name="nama_unit"
+          control={control}
+          rules={{
+            required: "Nama unit wajib diisi",
+            maxLength: {
+              value: 100,
+              message: "Nama unit maksimal 100 karakter",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="nama_unit"
+              type="text"
+              maxLength={100}
+              required
+              disabled={isLoading}
+              className={getDynamicInputClass("nama_unit")}
+              placeholder="Contoh: Teknik Informatika"
+            />
+          )}
+        />
         {errors.nama_unit && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.nama_unit}
+            {errors.nama_unit.message}
           </p>
         )}
       </div>
 
+      {/* Tampilkan error submit global */}
+      {errors.root?.submit && (
+        <p
+          className={`mt-1 text-sm text-center p-2 rounded ${
+            theme === "dark"
+              ? "text-red-400 bg-red-900/20"
+              : "text-red-600 bg-red-50"
+          }`}
+        >
+          {errors.root.submit.message}
+        </p>
+      )}
+
+      {/* Tombol Aksi */}
       <div className="flex justify-end space-x-3 pt-5">
         <button
           type="button"
           onClick={onCancel}
-          disabled={loading}
+          disabled={isLoading}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
             theme === "dark"
               ? "text-gray-200 bg-gray-600 hover:bg-gray-700"
@@ -320,12 +321,12 @@ export function UnitKerjaForm({ initialData, onSave, onCancel }: FormProps) {
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={isLoading || loadingUnitUtama} // Nonaktifkan jika form ATAU dropdown loading
           className={`px-4 py-2 text-sm font-medium text-white rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 flex items-center transition-colors duration-200 ${
             theme === "dark" ? "hover:bg-blue-600" : "hover:bg-blue-700"
           }`}
         >
-          {loading ? (
+          {isLoading ? (
             <>
               <svg
                 className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"

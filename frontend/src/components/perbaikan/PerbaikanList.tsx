@@ -2,12 +2,14 @@
 import React, { useState } from "react";
 import { usePerbaikan } from "../../hooks/usePerbaikan";
 import { PerbaikanModal } from "./PerbaikanModal";
+import { PerbaikanDetail } from "./PerbaikanDetail";
 import { Asset } from "../../types/perbaikan";
+import { Perbaikan as PerbaikanType } from "../../types/perbaikan";
 import { formatDate } from "../../utils/dateUtils";
 
 interface PerbaikanListProps {
   asset?: Asset;
-  onShowDetail?: (perbaikan: any) => void;
+  onShowDetail?: (perbaikan: PerbaikanType) => void;
 }
 
 export const PerbaikanList: React.FC<PerbaikanListProps> = ({
@@ -25,6 +27,8 @@ export const PerbaikanList: React.FC<PerbaikanListProps> = ({
 
   const [showModal, setShowModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [selectedId, setSelectedId] = useState<number>(0);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -49,6 +53,16 @@ export const PerbaikanList: React.FC<PerbaikanListProps> = ({
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedAsset(null);
+  };
+
+  const handleShowDetail = (perbaikan: PerbaikanType) => {
+    setSelectedId(perbaikan.id_perbaikan);
+    setShowDetail(true);
+  };
+
+  const handleCloseDetail = () => {
+    setShowDetail(false);
+    setSelectedId(0);
   };
 
   if (isLoading) {
@@ -134,7 +148,10 @@ export const PerbaikanList: React.FC<PerbaikanListProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => onShowDetail && onShowDetail(perbaikan)}
+                      onClick={() => {
+                        handleShowDetail(perbaikan);
+                        onShowDetail && onShowDetail(perbaikan);
+                      }}
                       className="text-blue-600 hover:text-blue-900 mr-3"
                     >
                       Detail
@@ -164,6 +181,14 @@ export const PerbaikanList: React.FC<PerbaikanListProps> = ({
           isOpen={showModal}
           onClose={handleCloseModal}
           asset={selectedAsset}
+        />
+      )}
+
+      {selectedId > 0 && (
+        <PerbaikanDetail
+          isOpen={showDetail}
+          onClose={handleCloseDetail}
+          id_perbaikan={selectedId}
         />
       )}
     </div>

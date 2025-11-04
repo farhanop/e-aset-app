@@ -64,7 +64,7 @@ export class AuthService {
     };
     console.log('🎫 Generating JWT payload:', payload);
 
-    const token = this.jwtService.sign(payload, { expiresIn: '30m' }); // Set token duration
+    const token = this.jwtService.sign(payload, { expiresIn: '4h' });
 
     // Return comprehensive user data without password
     const userForResponse = {
@@ -153,25 +153,21 @@ export class AuthService {
       );
     }
 
-    // 3. Perform the update using the UserService
-    //    usersService.update should handle partial updates correctly
     console.log(
       `💾 Calling usersService.update for userId: ${userId} with DTO...`,
     );
     // Ensure `usersService.update` returns the updated user WITHOUT the password
     const updatedUserResult = await this.usersService.update(
       userId,
-      updateProfileDto, // Send the DTO as received (may contain photo path etc.)
+      updateProfileDto,
     );
     console.log('✅ usersService.update finished successfully.');
 
-    // 4. Return the updated user data (already without password from usersService.update)
     console.log('📤 Returning updated user data from service.');
-    return updatedUserResult; // Directly return the result which should be Omit<User, 'password'>
+    return updatedUserResult;
   }
 
   /**
-   * Changes the password for the currently logged-in user.
    * @param userId The ID of the user changing the password.
    * @param changePasswordDto DTO containing the old and new passwords.
    * @returns A success message.

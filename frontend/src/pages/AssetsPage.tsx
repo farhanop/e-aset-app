@@ -76,11 +76,11 @@ const TableSkeleton = () => {
 
   return (
     <div
-      className={`p-6 rounded-xl shadow-lg ${
+      className={`p-4 md:p-6 rounded-xl shadow-lg ${
         theme === "dark" ? "bg-gray-800" : "bg-white"
       }`}
     >
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-4">
         <Skeleton
           height={40}
           width={200}
@@ -110,6 +110,151 @@ const TableSkeleton = () => {
   );
 };
 
+// Komponen untuk tampilan kartu aset di mobile
+const AssetCard = ({ asset, theme, toggleItem, selectedIds, handleDeleteClick }: { 
+  asset: Asset; 
+  theme: string; 
+  toggleItem: (id: number) => void; 
+  selectedIds: number[]; 
+  handleDeleteClick: (asset: Asset) => void;
+}) => {
+  return (
+    <div
+      className={`p-4 rounded-xl shadow mb-4 ${
+        theme === "dark" ? "bg-gray-800" : "bg-white"
+      }`}
+    >
+      {/* Add checkbox for selection mode */}
+      {toggleItem && (
+        <div className="flex items-center mb-2">
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(asset.id_aset)}
+            onChange={() => toggleItem(asset.id_aset)}
+            className="rounded mr-2"
+          />
+          <span className="text-sm">Pilih</span>
+        </div>
+      )}
+      
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="font-bold text-lg text-blue-600 dark:text-blue-400">
+            {asset.kode_aset}
+          </h3>
+          <p className="font-medium">
+            {asset.item?.nama_item || "N/A"}
+          </p>
+          {asset.merk && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {asset.merk} {asset.tipe_model && `- ${asset.tipe_model}`}
+            </p>
+          )}
+        </div>
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            asset.status_aset === "Tersedia"
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+              : asset.status_aset === "Dipinjam"
+              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+              : asset.status_aset === "Dalam Perbaikan"
+              ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300"
+              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+          }`}
+        >
+          {asset.status_aset || "Tersedia"}
+        </span>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+        <div>
+          <p className="text-gray-500 dark:text-gray-400">Kampus</p>
+          <p>{asset.lokasi?.gedung?.kampus?.nama_kampus || "N/A"}</p>
+        </div>
+        <div>
+          <p className="text-gray-500 dark:text-gray-400">Gedung</p>
+          <p>{asset.lokasi?.gedung?.nama_gedung || "N/A"}</p>
+        </div>
+        <div>
+          <p className="text-gray-500 dark:text-gray-400">Ruangan</p>
+          <p>{asset.lokasi?.nama_ruangan || "N/A"}</p>
+        </div>
+        <div>
+          <p className="text-gray-500 dark:text-gray-400">Lantai</p>
+          <p>{asset.lokasi?.lantai || "-"}</p>
+        </div>
+        <div>
+          <p className="text-gray-500 dark:text-gray-400">Unit Kerja</p>
+          <p>{asset.unitKerja?.nama_unit || "N/A"}</p>
+        </div>
+        <div>
+          <p className="text-gray-500 dark:text-gray-400">Tanggal</p>
+          <p>{asset.tgl_perolehan ? new Date(asset.tgl_perolehan).toLocaleDateString('id-ID') : "N/A"}</p>
+        </div>
+      </div>
+      
+      <div className="flex justify-end space-x-2">
+        <Link
+          to={`/assets/${asset.id_aset}`}
+          className={`px-3 py-1.5 rounded-lg transition-colors duration-200 text-sm ${
+            theme === "dark"
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+          }`}
+        >
+          Detail
+        </Link>
+        <Link
+          to={`/assets/${asset.id_aset}/edit`}
+          className={`px-3 py-1.5 rounded-lg transition-colors duration-200 text-sm ${
+            theme === "dark"
+              ? "bg-yellow-600 text-white hover:bg-yellow-700"
+              : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+          }`}
+          title="Edit Aset"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </Link>
+        <button
+          onClick={() => handleDeleteClick(asset)}
+          className={`px-3 py-1.5 rounded-lg transition-colors duration-200 text-sm ${
+            theme === "dark"
+              ? "bg-red-600 text-white hover:bg-red-700"
+              : "bg-red-100 text-red-700 hover:bg-red-200"
+          }`}
+          title="Hapus Aset"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export function AssetsPage() {
   const { theme } = useTheme();
   const [allAssets, setAllAssets] = useState<Asset[]>([]);
@@ -126,6 +271,8 @@ export function AssetsPage() {
   const [selectAll, setSelectAll] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+  const [sortBy, setSortBy] = useState<string>("tgl_perolehan"); // Default sort by date
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc"); // Default to newest first
 
   // Fetch data untuk filter
   const [lokasiList, setLokasiList] = useState<string[]>([]);
@@ -178,9 +325,9 @@ export function AssetsPage() {
     fetchAssets();
   }, []);
 
-  // Efek untuk memfilter data
+  // Efek untuk memfilter dan mengurutkan data
   useEffect(() => {
-    let result = allAssets;
+    let result = [...allAssets];
 
     // Filter berdasarkan search term
     if (searchTerm) {
@@ -228,9 +375,51 @@ export function AssetsPage() {
       );
     }
 
+    // Sorting
+    result.sort((a, b) => {
+      let valueA: any, valueB: any;
+      
+      switch (sortBy) {
+        case "kode_aset":
+          valueA = a.kode_aset;
+          valueB = b.kode_aset;
+          break;
+        case "nama_item":
+          valueA = a.item?.nama_item || "";
+          valueB = b.item?.nama_item || "";
+          break;
+        case "lokasi":
+          valueA = a.lokasi?.nama_ruangan || "";
+          valueB = b.lokasi?.nama_ruangan || "";
+          break;
+        case "status":
+          valueA = a.status_aset || "";
+          valueB = b.status_aset || "";
+          break;
+        case "tgl_perolehan":
+          // Sort by date (newest first by default)
+          valueA = new Date(a.tgl_perolehan || "1970-01-01");
+          valueB = new Date(b.tgl_perolehan || "1970-01-01");
+          break;
+        case "id_aset":
+          // Sort by ID (newest first by default)
+          valueA = a.id_aset;
+          valueB = b.id_aset;
+          break;
+        default:
+          // Default to sort by date (newest first)
+          valueA = new Date(a.tgl_perolehan || "1970-01-01");
+          valueB = new Date(b.tgl_perolehan || "1970-01-01");
+      }
+      
+      if (valueA < valueB) return sortOrder === "asc" ? -1 : 1;
+      if (valueA > valueB) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
     setFilteredAssets(result);
     setCurrentPage(1);
-  }, [searchTerm, allAssets, filterNamaBarang, filterLokasi, filterKampus]);
+  }, [searchTerm, allAssets, filterNamaBarang, filterLokasi, filterKampus, sortBy, sortOrder]);
 
   const handleRefresh = () => {
     fetchAssets();
@@ -405,22 +594,43 @@ export function AssetsPage() {
     buildPrintWindowForPages(pages);
   };
 
+  // Handle sort
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      // For date and ID, default to descending (newest first)
+      if (field === "tgl_perolehan" || field === "id_aset") {
+        setSortOrder("desc");
+      } else {
+        setSortOrder("asc");
+      }
+    }
+  };
+
+  // Get sort indicator
+  const getSortIndicator = (field: string) => {
+    if (sortBy !== field) return null;
+    return sortOrder === "asc" ? "↑" : "↓";
+  };
+
   if (loading) return <TableSkeleton />;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1
-          className={`text-3xl font-bold ${
+          className={`text-2xl md:text-3xl font-bold ${
             theme === "dark" ? "text-white" : "text-gray-800"
           }`}
         >
           Manajemen Aset
         </h1>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 md:gap-3">
           <button
             onClick={handleRefresh}
-            className="bg-blue-600 text-white px-4 py-3 rounded-xl shadow hover:bg-blue-700 transition-all duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5"
+            className="bg-blue-600 text-white px-4 py-3 rounded-xl shadow hover:bg-blue-700 transition-all duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
           >
             <svg
               className="w-4 h-4"
@@ -435,7 +645,7 @@ export function AssetsPage() {
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            Refresh Data
+            Refresh
           </button>
 
           {selectMode && (
@@ -477,7 +687,7 @@ export function AssetsPage() {
               selectMode
                 ? "bg-yellow-500 dark:bg-yellow-600"
                 : "bg-gray-200 dark:bg-gray-700"
-            } text-white px-4 py-3 rounded-xl shadow hover:opacity-90 transition-all duration-200 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5`}
+            } text-white px-4 py-3 rounded-xl shadow hover:opacity-90 transition-all duration-200 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5 text-sm`}
             title={
               selectMode
                 ? "Matikan mode pilih"
@@ -497,7 +707,7 @@ export function AssetsPage() {
                 d="M9 12l2 2 4-4M7 7h.01M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5z"
               />
             </svg>
-            {selectMode ? "Mode Pilih Aktif" : "Cetak"}
+            {selectMode ? "Mode Pilih" : "Cetak"}
           </button>
 
           {/* Tombol Cetak QR Code hanya muncul saat mode pilihan diaktifkan */}
@@ -509,7 +719,7 @@ export function AssetsPage() {
                 selectedIds.length > 0
                   ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
                   : "bg-gray-300 dark:bg-gray-600 cursor-not-allowed"
-              } text-white px-4 py-3 rounded-xl shadow transition-all duration-200 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5`}
+              } text-white px-4 py-3 rounded-xl shadow transition-all duration-200 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5 text-sm`}
               title={
                 selectedIds.length > 0
                   ? "Cetak QR Code untuk aset terpilih"
@@ -529,12 +739,12 @@ export function AssetsPage() {
                   d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
                 />
               </svg>
-              Cetak QR Code
+              Cetak QR
             </button>
           )}
           <Link
             to="/assets/assets-baru"
-            className="bg-blue-600 text-white px-4 py-3 rounded-xl shadow hover:bg-blue-700 transition-all duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5"
+            className="bg-blue-600 text-white px-4 py-3 rounded-xl shadow hover:bg-blue-700 transition-all duration-200 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
           >
             <svg
               className="w-4 h-4"
@@ -549,14 +759,14 @@ export function AssetsPage() {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            Daftarkan Aset Baru
+            Tambah Aset
           </Link>
         </div>
       </div>
 
       {/* --- BAGIAN PENCARIAN & FILTER --- */}
       <div
-        className={`mb-6 p-5 rounded-xl shadow-lg ${
+        className={`mb-6 p-4 md:p-5 rounded-xl shadow-lg ${
           theme === "dark" ? "bg-gray-800" : "bg-white"
         }`}
       >
@@ -565,7 +775,7 @@ export function AssetsPage() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Cari berdasarkan Kode Aset, Nama Barang, Lokasi..."
+                placeholder="Cari aset..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={`w-full pl-10 pr-4 py-3 rounded-xl border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
@@ -660,10 +870,10 @@ export function AssetsPage() {
                   : "bg-white border-gray-300 text-gray-900"
               }`}
             >
-              <option value={10}>10 per halaman</option>
-              <option value={25}>25 per halaman</option>
-              <option value={50}>50 per halaman</option>
-              <option value={100}>100 per halaman</option>
+              <option value={10}>10/hal</option>
+              <option value={25}>25/hal</option>
+              <option value={50}>50/hal</option>
+              <option value={100}>100/hal</option>
             </select>
           </div>
         </div>
@@ -702,7 +912,7 @@ export function AssetsPage() {
       >
         {filteredAssets.length === 0 ? (
           <div
-            className={`text-center p-12 rounded-xl ${
+            className={`text-center p-8 md:p-12 rounded-xl ${
               theme === "dark" ? "bg-gray-800" : "bg-white"
             } shadow-lg`}
           >
@@ -759,13 +969,14 @@ export function AssetsPage() {
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                Daftarkan Aset Baru
+                Tambah Aset Baru
               </Link>
             </div>
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Tampilan Tabel untuk Desktop */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead
                   className={theme === "dark" ? "bg-gray-750" : "bg-gray-50"}
@@ -787,63 +998,85 @@ export function AssetsPage() {
                     )}
 
                     <th
-                      className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
+                      onClick={() => handleSort("kode_aset")}
                     >
-                      Kode Aset
+                      <div className="flex items-center">
+                        Kode {getSortIndicator("kode_aset")}
+                      </div>
                     </th>
                     <th
-                      className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
+                      onClick={() => handleSort("nama_item")}
                     >
-                      Nama Barang
+                      <div className="flex items-center">
+                        Nama {getSortIndicator("nama_item")}
+                      </div>
                     </th>
                     <th
-                      className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
                     >
                       Kampus
                     </th>
                     <th
-                      className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
                     >
                       Gedung
                     </th>
                     <th
-                      className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
+                      onClick={() => handleSort("lokasi")}
                     >
-                      Ruangan
+                      <div className="flex items-center">
+                        Ruangan {getSortIndicator("lokasi")}
+                      </div>
                     </th>
                     <th
-                      className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
                     >
                       Lantai
                     </th>
                     <th
-                      className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
                     >
-                      Unit Kerja
+                      Unit
                     </th>
                     <th
-                      className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
+                      onClick={() => handleSort("status")}
                     >
-                      Status
+                      <div className="flex items-center">
+                        Status {getSortIndicator("status")}
+                      </div>
                     </th>
                     <th
-                      className={`px-6 py-4 text-right text-xs font-medium uppercase tracking-wider ${
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
+                        theme === "dark" ? "text-gray-300" : "text-gray-500"
+                      }`}
+                      onClick={() => handleSort("tgl_perolehan")}
+                    >
+                      <div className="flex items-center">
+                        Tanggal {getSortIndicator("tgl_perolehan")}
+                      </div>
+                    </th>
+                    <th
+                      className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${
                         theme === "dark" ? "text-gray-300" : "text-gray-500"
                       }`}
                     >
@@ -867,7 +1100,7 @@ export function AssetsPage() {
                     >
                       {selectMode && (
                         <td
-                          className={`px-4 py-4 whitespace-nowrap text-sm ${
+                          className={`px-4 py-3 whitespace-nowrap text-sm ${
                             theme === "dark" ? "text-gray-300" : "text-gray-500"
                           }`}
                         >
@@ -880,7 +1113,7 @@ export function AssetsPage() {
                         </td>
                       )}
                       <td
-                        className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                        className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${
                           theme === "dark" ? "text-white" : "text-gray-900"
                         }`}
                       >
@@ -889,7 +1122,7 @@ export function AssetsPage() {
                         </span>
                       </td>
                       <td
-                        className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                        className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${
                           theme === "dark" ? "text-white" : "text-gray-900"
                         }`}
                       >
@@ -906,35 +1139,35 @@ export function AssetsPage() {
                         </div>
                       </td>
                       <td
-                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        className={`px-4 py-3 whitespace-nowrap text-sm ${
                           theme === "dark" ? "text-gray-300" : "text-gray-500"
                         }`}
                       >
                         {asset.lokasi?.gedung?.kampus?.nama_kampus || "N/A"}
                       </td>
                       <td
-                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        className={`px-4 py-3 whitespace-nowrap text-sm ${
                           theme === "dark" ? "text-gray-300" : "text-gray-500"
                         }`}
                       >
                         {asset.lokasi?.gedung?.nama_gedung || "N/A"}
                       </td>
                       <td
-                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        className={`px-4 py-3 whitespace-nowrap text-sm ${
                           theme === "dark" ? "text-gray-300" : "text-gray-500"
                         }`}
                       >
                         {asset.lokasi?.nama_ruangan || "N/A"}
                       </td>
                       <td
-                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        className={`px-4 py-3 whitespace-nowrap text-sm ${
                           theme === "dark" ? "text-gray-300" : "text-gray-500"
                         }`}
                       >
                         {asset.lokasi?.lantai || "-"}
                       </td>
                       <td
-                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        className={`px-4 py-3 whitespace-nowrap text-sm ${
                           theme === "dark" ? "text-gray-300" : "text-gray-500"
                         }`}
                       >
@@ -946,7 +1179,7 @@ export function AssetsPage() {
                         </div>
                       </td>
                       <td
-                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                        className={`px-4 py-3 whitespace-nowrap text-sm ${
                           theme === "dark" ? "text-gray-300" : "text-gray-500"
                         }`}
                       >
@@ -964,10 +1197,17 @@ export function AssetsPage() {
                           {asset.status_aset || "Tersedia"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td
+                        className={`px-4 py-3 whitespace-nowrap text-sm ${
+                          theme === "dark" ? "text-gray-300" : "text-gray-500"
+                        }`}
+                      >
+                        {asset.tgl_perolehan ? new Date(asset.tgl_perolehan).toLocaleDateString('id-ID') : "N/A"}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <Link
                           to={`/assets/${asset.id_aset}`}
-                          className={`mr-3 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
+                          className={`mr-2 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
                             theme === "dark"
                               ? "bg-indigo-600 text-white hover:bg-indigo-700"
                               : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
@@ -977,7 +1217,7 @@ export function AssetsPage() {
                         </Link>
                         <Link
                           to={`/assets/${asset.id_aset}/edit`}
-                          className={`mr-3 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
+                          className={`mr-2 px-3 py-1.5 rounded-lg transition-colors duration-200 ${
                             theme === "dark"
                               ? "bg-yellow-600 text-white hover:bg-yellow-700"
                               : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
@@ -1028,17 +1268,42 @@ export function AssetsPage() {
               </table>
             </div>
 
+            {/* Tampilan Kartu untuk Mobile */}
+            <div className="md:hidden p-4">
+              {selectMode && (
+                <div className="mb-4 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={() => toggleAll()}
+                    className="rounded mr-2"
+                  />
+                  <span className="text-sm">Pilih semua</span>
+                </div>
+              )}
+              {currentItems.map((asset) => (
+                <AssetCard 
+                  key={asset.id_aset}
+                  asset={asset}
+                  theme={theme}
+                  toggleItem={toggleItem}
+                  selectedIds={selectedIds}
+                  handleDeleteClick={handleDeleteClick}
+                />
+              ))}
+            </div>
+
             {/* Pagination */}
             {totalPages > 1 && (
               <div
-                className={`px-4 py-4 flex items-center justify-between border-t ${
+                className={`px-4 py-4 flex flex-col md:flex-row items-center justify-between border-t ${
                   theme === "dark"
                     ? "bg-gray-800 border-gray-700"
                     : "bg-white border-gray-200"
                 }`}
               >
                 <div
-                  className={`text-sm ${
+                  className={`text-sm mb-2 md:mb-0 ${
                     theme === "dark" ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
@@ -1050,7 +1315,7 @@ export function AssetsPage() {
                   <button
                     onClick={() => paginate(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+                    className={`px-3 py-2 rounded-lg transition-colors flex items-center text-sm ${
                       currentPage === 1
                         ? theme === "dark"
                           ? "bg-gray-700 text-gray-500 cursor-not-allowed"
@@ -1060,13 +1325,13 @@ export function AssetsPage() {
                         : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                     }`}
                   >
-                    ← Previous
+                    ←
                   </button>
 
                   <div className="flex space-x-1">
                     {(() => {
                       const pageNumbers = [];
-                      const maxVisiblePages = 5;
+                      const maxVisiblePages = 3; // Kurangi untuk mobile
 
                       if (totalPages <= maxVisiblePages) {
                         // If there are fewer pages than the max visible, show all
@@ -1078,17 +1343,17 @@ export function AssetsPage() {
                         pageNumbers.push(1);
 
                         // If current page is near the start
-                        if (currentPage <= 3) {
-                          for (let i = 2; i <= 4; i++) {
+                        if (currentPage <= 2) {
+                          for (let i = 2; i <= 3; i++) {
                             pageNumbers.push(i);
                           }
                           pageNumbers.push("...");
                           pageNumbers.push(totalPages);
                         }
                         // If current page is near the end
-                        else if (currentPage >= totalPages - 2) {
+                        else if (currentPage >= totalPages - 1) {
                           pageNumbers.push("...");
-                          for (let i = totalPages - 3; i <= totalPages; i++) {
+                          for (let i = totalPages - 2; i <= totalPages; i++) {
                             pageNumbers.push(i);
                           }
                         }
@@ -1111,7 +1376,7 @@ export function AssetsPage() {
                         pageNum === "..." ? (
                           <span
                             key={`ellipsis-${index}`}
-                            className={`px-3 py-2 ${
+                            className={`px-2 py-1 ${
                               theme === "dark"
                                 ? "text-gray-400"
                                 : "text-gray-500"
@@ -1123,7 +1388,7 @@ export function AssetsPage() {
                           <button
                             key={pageNum}
                             onClick={() => paginate(pageNum as number)}
-                            className={`w-10 h-10 rounded-lg transition-colors ${
+                            className={`w-8 h-8 rounded-lg transition-colors text-sm ${
                               currentPage === pageNum
                                 ? "bg-blue-600 text-white"
                                 : theme === "dark"
@@ -1141,7 +1406,7 @@ export function AssetsPage() {
                   <button
                     onClick={() => paginate(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+                    className={`px-3 py-2 rounded-lg transition-colors flex items-center text-sm ${
                       currentPage === totalPages
                         ? theme === "dark"
                           ? "bg-gray-700 text-gray-500 cursor-not-allowed"
@@ -1151,7 +1416,7 @@ export function AssetsPage() {
                         : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                     }`}
                   >
-                    Next →
+                    →
                   </button>
                 </div>
               </div>

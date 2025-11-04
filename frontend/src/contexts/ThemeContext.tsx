@@ -1,3 +1,4 @@
+// frontend\src\contexts\ThemeContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
@@ -27,8 +28,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const root = document.documentElement;
+
+    // Remove both classes first
     root.classList.remove("light", "dark");
+
+    // Add current theme class
     root.classList.add(theme);
+
+    // Untuk Tailwind CSS v4.1, gunakan data-theme attribute
+    root.setAttribute("data-theme", theme);
+
+    // Update class untuk dark mode compatibility
+    if (theme === "dark") {
+      root.classList.add("dark");
+      root.classList.add("dark-theme");
+    } else {
+      root.classList.remove("dark");
+      root.classList.remove("dark-theme");
+    }
+
+    // Save to localStorage
     localStorage.setItem("theme", theme);
   }, [theme]);
 

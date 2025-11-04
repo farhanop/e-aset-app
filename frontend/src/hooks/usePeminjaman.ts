@@ -27,8 +27,13 @@ export const usePeminjaman = () => {
 
   // Mutation untuk pengembalian
   const kembalikanMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data?: PengembalianDto }) =>
-      assetLifecycleService.kembalikan(id, data),
+    mutationFn: ({
+      id_peminjaman,
+      data,
+    }: {
+      id_peminjaman: number;
+      data: PengembalianDto;
+    }) => assetLifecycleService.kembalikan(id_peminjaman, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: ["peminjaman-aktif"] });

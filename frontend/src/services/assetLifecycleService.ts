@@ -17,8 +17,8 @@ export const assetLifecycleService = {
   // Pengembalian
   async kembalikan(
     id_peminjaman: number,
-    data?: PengembalianDto
-  ): Promise<any> {
+    data: PengembalianDto
+  ): Promise<Asset> {
     const response = await api.post(
       `/asset-lifecycle/kembalikan/${id_peminjaman}`,
       data
@@ -34,18 +34,18 @@ export const assetLifecycleService = {
 
   // Update status terlambat
   async updateStatusTerlambat(): Promise<void> {
-    await api.post("/asset-lifecycle/update-status-terlambat");
+    await api.post("/asset-lifecycle/check-overdue");
   },
 
-  // Get semua aset (jika ada endpoint-nya)
+  // Get semua aset
   async getAssets(): Promise<Asset[]> {
-    const response = await api.get("/assets"); // Sesuaikan dengan endpoint backend
+    const response = await api.get("/asset-lifecycle/assets");
     return response.data;
   },
 
   // Get peminjaman aktif
   async getPeminjamanAktif(): Promise<Peminjaman[]> {
-    const response = await api.get("/asset-lifecycle/peminjaman-aktif"); // Anda perlu buat endpoint ini di backend
+    const response = await api.get("/asset-lifecycle/peminjaman-aktif");
     return response.data;
   },
 };

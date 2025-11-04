@@ -1,7 +1,9 @@
 // frontend\src\components\forms\LokasiForm.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import api from "../../api/axios";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useForm, Controller } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 
 // --- TIPE DATA ---
 interface Gedung {
@@ -14,6 +16,8 @@ interface UnitKerja {
   nama_unit: string;
   kode_unit?: string;
 }
+
+// Tipe data untuk form
 interface LokasiData {
   id_lokasi?: number;
   kode_ruangan: string;
@@ -27,65 +31,69 @@ interface LokasiData {
 interface LokasiFormProps {
   initialData?: LokasiData | null;
   onSave: (data: Omit<LokasiData, "id_lokasi">) => Promise<void>;
-  isLoading: boolean;
+  isLoading: boolean; // isLoading dari mutasi (parent)
   onCancel?: () => void;
 }
+
+// --- Fungsi Fetching untuk useQuery ---
+const fetchGedungList = async (): Promise<Gedung[]> => {
+  const res = await api.get("/master-data/gedung");
+  return res.data.data || res.data || [];
+};
+
+const fetchUnitKerjaList = async (): Promise<UnitKerja[]> => {
+  const res = await api.get("/master-data/unit-kerja");
+  return res.data.data || res.data || [];
+};
 
 export const LokasiForm: React.FC<LokasiFormProps> = ({
   initialData,
   onSave,
-  isLoading,
+  isLoading, // Ini adalah isPending dari mutasi
   onCancel,
 }) => {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState<Omit<LokasiData, "id_lokasi">>({
-    kode_ruangan: "",
-    nama_ruangan: "",
-    lantai: 1,
-    id_gedung: null,
-    id_unit_kerja: null,
+
+  // 1. Gunakan useQuery untuk mengambil data dropdown
+  const { data: gedungList = [], isLoading: loadingGedung } = useQuery({
+    queryKey: ["gedungList"],
+    queryFn: fetchGedungList,
   });
 
-  // State untuk data dropdown
-  const [gedungList, setGedungList] = useState<Gedung[]>([]);
-  const [unitKerjaList, setUnitKerjaList] = useState<UnitKerja[]>([]);
-  const [loadingDropdowns, setLoadingDropdowns] = useState(true);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { data: unitKerjaList = [], isLoading: loadingUnitKerja } = useQuery({
+    queryKey: ["unitKerjaList"],
+    queryFn: fetchUnitKerjaList,
+  });
 
-  // Ambil data untuk dropdown
-  useEffect(() => {
-    const fetchDropdownData = async () => {
-      setLoadingDropdowns(true);
-      try {
-        const [gedungRes, unitRes] = await Promise.all([
-          api.get("/master-data/gedung"),
-          api.get("/master-data/unit-kerja"),
-        ]);
-        setGedungList(gedungRes.data.data || gedungRes.data || []);
-        setUnitKerjaList(unitRes.data.data || unitRes.data || []);
-      } catch (error) {
-        console.error("Gagal memuat data dropdown", error);
-        // Tampilkan toast error jika perlu
-      } finally {
-        setLoadingDropdowns(false);
-      }
-    };
-    fetchDropdownData();
-  }, []);
+  const loadingDropdowns = loadingGedung || loadingUnitKerja;
 
-  // Isi form jika ada initialData (mode edit)
+  // 2. Setup react-hook-form
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors }, // errors dikelola otomatis
+  } = useForm<LokasiData>({
+    defaultValues: {
+      kode_ruangan: "",
+      nama_ruangan: "",
+      lantai: 1,
+      id_gedung: null,
+      id_unit_kerja: null,
+    },
+  });
+
+  // 3. Efek untuk mengisi form saat initialData berubah (mode edit)
   useEffect(() => {
     if (initialData) {
-      setFormData({
-        kode_ruangan: initialData.kode_ruangan || "",
-        nama_ruangan: initialData.nama_ruangan || "",
-        lantai: initialData.lantai || 1,
+      reset({
+        ...initialData,
         id_gedung: initialData.id_gedung || null,
         id_unit_kerja: initialData.id_unit_kerja || null,
       });
     } else {
-      // Reset form jika mode create
-      setFormData({
+      // Reset ke default jika mode create
+      reset({
         kode_ruangan: "",
         nama_ruangan: "",
         lantai: 1,
@@ -93,95 +101,57 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
         id_unit_kerja: null,
       });
     }
-    // Reset errors when initialData changes
-    setErrors({});
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.kode_ruangan.trim()) {
-      newErrors.kode_ruangan = "Kode ruangan wajib diisi";
-    } else if (!/^[a-zA-Z0-9]{1,6}$/.test(formData.kode_ruangan)) {
-      newErrors.kode_ruangan = "Kode ruangan harus 1-6 karakter (huruf/angka)";
-    }
-
-    if (!formData.nama_ruangan.trim()) {
-      newErrors.nama_ruangan = "Nama ruangan wajib diisi";
-    }
-
-    if (!formData.id_gedung) {
-      newErrors.id_gedung = "Gedung wajib dipilih";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  // 4. Fungsi onSubmit yang dipanggil oleh handleSubmit dari RHF
+  const onSubmit = (data: LokasiData) => {
+    // Pastikan data numerik dikirim sebagai angka
+    const processedData = {
+      ...data,
+      lantai: Number(data.lantai) || 1,
+      id_gedung: data.id_gedung ? Number(data.id_gedung) : null,
+      id_unit_kerja: data.id_unit_kerja ? Number(data.id_unit_kerja) : null,
+    };
+    onSave(processedData);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    let finalValue: string | number | null = value;
-
-    // Special handling for kode_ruangan to only allow letters and numbers
-    if (name === "kode_ruangan") {
-      // Remove any non-alphanumeric characters (only allow a-z, A-Z, 0-9)
-      const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
-      finalValue = alphanumericValue;
-    } else if (name === "id_gedung" || name === "id_unit_kerja") {
-      finalValue = value ? parseInt(value, 10) : null;
-    } else if (name === "lantai") {
-      finalValue = parseInt(value, 10) || 1;
-    }
-
-    setFormData((prev) => ({ ...prev, [name]: finalValue }));
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      onSave(formData);
-    }
-  };
-
-  // Kelas CSS yang akan digunakan berulang kali
+  // --- Kelas CSS ---
   const labelClass = `block text-sm font-medium mb-1 ${
     theme === "dark" ? "text-gray-300" : "text-gray-700"
   }`;
 
-  const inputClass = `w-full px-3 py-2 rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
-    errors.kode_ruangan || errors.nama_ruangan || errors.lantai
-      ? theme === "dark"
-        ? "bg-red-900/20 border-red-500 text-red-200"
-        : "bg-red-50 border-red-300 text-red-900"
-      : theme === "dark"
+  // Helper untuk kelas input/select dinamis
+  const getDynamicInputClass = (
+    fieldName: keyof LokasiData,
+    isSelect = false
+  ) => {
+    const baseClass = isSelect
+      ? "bg-white border-gray-300 text-gray-900"
+      : "bg-white border-gray-300 text-gray-900";
+    const darkBaseClass = isSelect
       ? "bg-gray-700 border-gray-600 text-white"
-      : "bg-white border-gray-300 text-gray-900"
-  }`;
+      : "bg-gray-700 border-gray-600 text-white";
+    const errorClass = "bg-red-50 border-red-300 text-red-900";
+    const darkErrorClass = "bg-red-900/20 border-red-500 text-red-200";
 
-  const selectClass = `w-full px-3 py-2 rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
-    errors.id_gedung || errors.id_unit_kerja
-      ? theme === "dark"
-        ? "bg-red-900/20 border-red-500 text-red-200"
-        : "bg-red-50 border-red-300 text-red-900"
-      : theme === "dark"
-      ? "bg-gray-700 border-gray-600 text-white"
-      : "bg-white border-gray-300 text-gray-900"
-  }`;
+    const hasError = !!errors[fieldName];
+
+    return `w-full px-3 py-2 rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
+      hasError
+        ? theme === "dark"
+          ? darkErrorClass
+          : errorClass
+        : theme === "dark"
+        ? darkBaseClass
+        : baseClass
+    }`;
+  };
 
   const buttonClass = `px-4 py-2 rounded-md font-medium transition-colors duration-200 ${
     theme === "dark"
       ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
       : "bg-gray-200 hover:bg-gray-300 text-gray-700"
   }`;
-
   const submitButtonClass = `px-4 py-2 rounded-md font-medium text-white transition-colors duration-200 ${
     theme === "dark"
       ? "bg-blue-600 hover:bg-blue-700"
@@ -189,47 +159,60 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
   }`;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    // 5. Ganti <form> untuk menggunakan handleSubmit dari RHF
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* Input Kode Ruangan */}
       <div>
         <label htmlFor="kode_ruangan" className={labelClass}>
           Kode Ruangan *
         </label>
-
-        {/* Catatan contoh input */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              LAB101, R201, LT3, KANTOR, 4F, A105
-            </span>
-          </p>
           <p>Maksimal 6 karakter (huruf/angka, tanpa spasi)</p>
         </div>
 
-        <input
-          type="text"
-          id="kode_ruangan"
+        {/* 6. Ganti input dengan Controller */}
+        <Controller
           name="kode_ruangan"
-          value={formData.kode_ruangan}
-          onChange={handleChange}
-          required
-          maxLength={6}
-          disabled={isLoading}
-          className={inputClass}
-          placeholder="Contoh: LAB101"
+          control={control}
+          rules={{
+            required: "Kode ruangan wajib diisi",
+            pattern: {
+              value: /^[a-zA-Z0-9]{1,6}$/,
+              message: "Kode ruangan harus 1-6 karakter (huruf/angka)",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="kode_ruangan"
+              type="text"
+              // Terapkan logika formatting Anda di sini
+              onChange={(e) => {
+                const formattedValue = e.target.value
+                  .replace(/[^a-zA-Z0-9]/g, "")
+                  .toUpperCase();
+                field.onChange(formattedValue); // Kirim nilai bersih ke RHF
+              }}
+              required
+              maxLength={6}
+              disabled={isLoading}
+              className={getDynamicInputClass("kode_ruangan")}
+              placeholder="Contoh: LAB101"
+            />
+          )}
         />
+        {/* 7. Tampilkan error dari RHF */}
         {errors.kode_ruangan && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.kode_ruangan}
+            {errors.kode_ruangan.message}
           </p>
         )}
       </div>
@@ -239,31 +222,28 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
         <label htmlFor="nama_ruangan" className={labelClass}>
           Nama Ruangan *
         </label>
-
-        {/* Catatan contoh input untuk nama ruangan */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              Lab Komputer, Ruang Dosen, Auditorium, Ruang Rapat
-            </span>
-          </p>
+          <p>Contoh: Lab Komputer, Ruang Dosen, Auditorium</p>
         </div>
-
-        <input
-          type="text"
-          id="nama_ruangan"
+        <Controller
           name="nama_ruangan"
-          value={formData.nama_ruangan}
-          onChange={handleChange}
-          required
-          disabled={isLoading}
-          className={inputClass}
-          placeholder="Contoh: Lab Komputer"
+          control={control}
+          rules={{ required: "Nama ruangan wajib diisi" }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="nama_ruangan"
+              type="text"
+              required
+              disabled={isLoading}
+              className={getDynamicInputClass("nama_ruangan")}
+              placeholder="Contoh: Lab Komputer"
+            />
+          )}
         />
         {errors.nama_ruangan && (
           <p
@@ -271,7 +251,7 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.nama_ruangan}
+            {errors.nama_ruangan.message}
           </p>
         )}
       </div>
@@ -281,8 +261,6 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
         <label htmlFor="lantai" className={labelClass}>
           Lantai *
         </label>
-
-        {/* Catatan contoh input untuk lantai */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
@@ -290,17 +268,24 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
         >
           <p>Masukkan nomor lantai (dimulai dari 1)</p>
         </div>
-
-        <input
-          type="number"
-          id="lantai"
+        <Controller
           name="lantai"
-          value={formData.lantai}
-          onChange={handleChange}
-          required
-          disabled={isLoading}
-          className={inputClass}
-          min="1"
+          control={control}
+          rules={{
+            required: "Lantai wajib diisi",
+            min: { value: 1, message: "Lantai minimal 1" },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="lantai"
+              type="number"
+              required
+              disabled={isLoading}
+              className={getDynamicInputClass("lantai")}
+              min="1"
+            />
+          )}
         />
         {errors.lantai && (
           <p
@@ -308,7 +293,7 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.lantai}
+            {errors.lantai.message}
           </p>
         )}
       </div>
@@ -318,8 +303,6 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
         <label htmlFor="id_gedung" className={labelClass}>
           Gedung *
         </label>
-
-        {/* Catatan contoh input untuk gedung */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
@@ -327,33 +310,38 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
         >
           <p>Pilih gedung lokasi ruangan berada</p>
         </div>
-
-        <select
-          id="id_gedung"
+        <Controller
           name="id_gedung"
-          value={formData.id_gedung || ""}
-          onChange={handleChange}
-          disabled={isLoading || loadingDropdowns}
-          required
-          className={selectClass}
-        >
-          <option value="">
-            {loadingDropdowns ? "Memuat..." : "-- Pilih Gedung --"}
-          </option>
-          {gedungList.map((gedung) => (
-            <option key={gedung.id_gedung} value={gedung.id_gedung}>
-              {gedung.nama_gedung}{" "}
-              {gedung.kode_gedung ? `(${gedung.kode_gedung})` : ""}
-            </option>
-          ))}
-        </select>
+          control={control}
+          rules={{ required: "Gedung wajib dipilih" }}
+          render={({ field }) => (
+            <select
+              {...field}
+              id="id_gedung"
+              disabled={isLoading || loadingDropdowns}
+              required
+              className={getDynamicInputClass("id_gedung", true)}
+              value={field.value || ""} // Handle null value
+            >
+              <option value="">
+                {loadingDropdowns ? "Memuat..." : "-- Pilih Gedung --"}
+              </option>
+              {gedungList.map((gedung) => (
+                <option key={gedung.id_gedung} value={gedung.id_gedung}>
+                  {gedung.nama_gedung}{" "}
+                  {gedung.kode_gedung ? `(${gedung.kode_gedung})` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        />
         {errors.id_gedung && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.id_gedung}
+            {errors.id_gedung.message}
           </p>
         )}
       </div>
@@ -363,44 +351,38 @@ export const LokasiForm: React.FC<LokasiFormProps> = ({
         <label htmlFor="id_unit_kerja" className={labelClass}>
           Unit Kerja (Penanggung Jawab)
         </label>
-
-        {/* Catatan contoh input untuk unit kerja */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>Pilih unit kerja yang bertanggung jawab atas ruangan (opsional)</p>
+          <p>Pilih unit kerja yang bertanggung jawab (opsional)</p>
         </div>
-
-        <select
-          id="id_unit_kerja"
+        <Controller
           name="id_unit_kerja"
-          value={formData.id_unit_kerja || ""}
-          onChange={handleChange}
-          disabled={isLoading || loadingDropdowns}
-          className={selectClass}
-        >
-          <option value="">
-            {loadingDropdowns
-              ? "Memuat..."
-              : "-- Pilih Unit Kerja (Opsional) --"}
-          </option>
-          {unitKerjaList.map((unit) => (
-            <option key={unit.id_unit_kerja} value={unit.id_unit_kerja}>
-              {unit.nama_unit} {unit.kode_unit ? `(${unit.kode_unit})` : ""}
-            </option>
-          ))}
-        </select>
-        {errors.id_unit_kerja && (
-          <p
-            className={`mt-1 text-sm ${
-              theme === "dark" ? "text-red-400" : "text-red-600"
-            }`}
-          >
-            {errors.id_unit_kerja}
-          </p>
-        )}
+          control={control}
+          render={({ field }) => (
+            <select
+              {...field}
+              id="id_unit_kerja"
+              disabled={isLoading || loadingDropdowns}
+              className={getDynamicInputClass("id_unit_kerja", true)}
+              value={field.value || ""} // Handle null value
+            >
+              <option value="">
+                {loadingDropdowns
+                  ? "Memuat..."
+                  : "-- Pilih Unit Kerja (Opsional) --"}
+              </option>
+              {unitKerjaList.map((unit) => (
+                <option key={unit.id_unit_kerja} value={unit.id_unit_kerja}>
+                  {unit.nama_unit} {unit.kode_unit ? `(${unit.kode_unit})` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        />
+        {/* Tidak perlu tampilkan error karena opsional */}
       </div>
 
       {/* Tombol Aksi */}

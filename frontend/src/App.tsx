@@ -10,6 +10,8 @@ import { AnimatePresence } from "framer-motion";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { FeatureFlagProvider } from "./contexts/FeatureFlagContext";
+import { EnvironmentProvider } from "./contexts/EnvironmentContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -26,6 +28,9 @@ import { QRCodeGenerator } from "./components/qr/QRCodeGenerator";
 import QRCodeListPage from "./components/qr/QRCodeListPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AssetLifecycleManager } from "./pages/AssetLifecycleManager";
+import { RiwayatAsetPage } from "./pages/RiwayatAset";
+import FullDevPage from "./components/development/FullDevPage";
+
 
 // Create a client
 const queryClient = new QueryClient({
@@ -123,16 +128,6 @@ function AppRoutes() {
             }
           />
 
-          {/* Peminjaman Routes */}
-          <Route
-            path="peminjaman"
-            element={
-              <ProtectedRoute allowedRoles={["super-admin", "admin", "staff"]}>
-                <AssetLifecycleManager />
-              </ProtectedRoute>
-            }
-          />
-
           <Route
             path="reports/laporan-berdasarkan-lokasi"
             element={
@@ -189,6 +184,47 @@ function AppRoutes() {
           />
         </Route>
 
+        {/* Peminjaman Routes - Full Development Page */}
+        <Route
+          path="/peminjaman"
+          element={
+            <ProtectedRoute>
+              <FullDevPage 
+                moduleName="Aset Peminjaman"
+                releaseDate="Akhir Bulan"
+                version="1.0"
+                issues={[
+                 "By_BPT", 
+                  "Dalam Berjalanan",
+                  "bpt@uigm.ac.id",
+                ]}
+              >
+                <AssetLifecycleManager />
+              </FullDevPage>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+           path="riwayat-aset"
+           element={
+            <ProtectedRoute>
+              <FullDevPage 
+                moduleName="riwayat-aset"
+                releaseDate="Akhir Bulan"
+                version="1.0"
+                issues={[
+                 "By_BPT", 
+                  "Dalam Berjalanan",
+                  "bpt@uigm.ac.id",
+                ]}
+              >
+          <RiwayatAsetPage />
+          </FullDevPage>
+        </ProtectedRoute>
+         }
+        />
+
         {/* 404 and Unauthorized Routes */}
         <Route
           path="/unauthorized"
@@ -222,10 +258,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <AuthNavigationHandler />
-          <AppRoutes />
-        </Router>
+        <EnvironmentProvider>
+          <FeatureFlagProvider>
+            <Router>
+              <AuthNavigationHandler />
+              <AppRoutes />
+            </Router>
+          </FeatureFlagProvider>
+        </EnvironmentProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

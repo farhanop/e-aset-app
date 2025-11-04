@@ -1,16 +1,18 @@
-// src/main.ts
+// backend/src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors();
-  app.useStaticAssets(join(__dirname, '..', 'public'));
-  await app.listen(3000);
+
+  // HAPUS SEMUA 'setGlobalPrefix' DAN 'useStaticAssets' DARI SINI.
+  // Nginx sudah menangani semua rute.
+
+  // NestJS HANYA perlu berjalan di localhost (127.0.0.1)
+  // agar bisa didengar oleh Nginx. Ini lebih aman.
+  await app.listen(3000, '127.0.0.1');
 }
 bootstrap();

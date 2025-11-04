@@ -1,4 +1,4 @@
-// src/entities/pengembalian-barang.entity.ts
+// backend\src\entities\pengembalian-barang.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -20,6 +20,12 @@ export class PengembalianBarang {
 
   @Column({ type: 'date' })
   tgl_aktual_kembali: Date;
+
+  @Column({ type: 'varchar', length: 50 })
+  kondisi_kembali: string;
+
+  @Column({ type: 'text', nullable: true })
+  keterangan_pengembalian: string;
 
   @Column()
   id_petugas_kembali: number;

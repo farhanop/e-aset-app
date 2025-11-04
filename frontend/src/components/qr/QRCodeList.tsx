@@ -7,7 +7,7 @@ const QRCodeList: React.FC = () => {
   const [qrcodes, setQrcodes] = useState<QRCode[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
+  const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://10.0.0.30:3000';
 
   useEffect(() => {
     const fetchQRCodes = async () => {

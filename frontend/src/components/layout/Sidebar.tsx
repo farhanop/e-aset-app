@@ -80,12 +80,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       roles: ["super-admin", "admin", "staff"],
     },
     {
-      path: "/peminjaman", // TAMBAH MENU PEMINJAMAN
-      icon: <FaHandHolding />,
-      label: "Peminjaman Aset",
-      roles: ["super-admin", "admin", "staff"],
-    },
-    {
       path: "/master-data",
       icon: <FaDatabase />,
       label: "Data Master",
@@ -103,6 +97,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       label: "Laporan per Ruangan",
       roles: ["super-admin", "admin"],
     },
+    {
+      path: "/peminjaman",
+      icon: <FaHandHolding />,
+      label: "Aset Peminjaman",
+      roles: ["super-admin", "admin", "staff"],
+    },
   ];
 
   const settingsItems: MenuItem[] = [
@@ -113,7 +113,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       roles: ["super-admin"],
     },
     {
-      path: "/asset-history",
+      path: "/riwayat-aset",
       icon: <FaHistory />,
       label: "Riwayat Aset",
       roles: ["super-admin", "admin", "staff"],
@@ -367,7 +367,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {!isCollapsed && (
                 <div className="text-center">
                   <h2 className="text-lg font-bold text-white">UNIVERSITAS</h2>
-                  <h3 className="text-md font-semibold text-yellow-400">IGM</h3>
+                  <h3 className="text-md font-semibold text-yellow-400">Indo Global Mandiri</h3>
                   <p
                     className={`text-xs mt-1 transition-colors duration-300 ${
                       theme === "dark" ? "text-gray-300" : "text-blue-200"

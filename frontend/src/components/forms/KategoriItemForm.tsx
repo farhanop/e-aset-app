@@ -1,92 +1,99 @@
 // frontend\src\components\forms\KategoriItemForm.tsx
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useForm, Controller } from "react-hook-form";
 
+// --- TIPE DATA ---
 interface KategoriData {
   id_kategori?: number;
   nama_kategori: string;
 }
 
+// --- PROPS (Diperbaiki) ---
 interface FormProps {
   initialData: Partial<KategoriData> | null;
-  onSave: (data: KategoriData) => void;
+  onSave: (data: KategoriData) => Promise<void>; // 1. Diubah ke Promise
   onCancel: () => void;
+  isLoading: boolean; // 2. Ditambahkan: Menerima status loading dari parent
 }
 
-export function KategoriItemForm({ initialData, onSave, onCancel }: FormProps) {
+// Tipe untuk error submit
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+export function KategoriItemForm({
+  initialData,
+  onSave,
+  onCancel,
+  isLoading, // Menerima isPending/isLoading dari mutasi
+}: FormProps) {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState({
-    nama_kategori: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const isEditMode = !!initialData?.id_kategori;
 
+  // 3. Setup react-hook-form (menggantikan semua useState)
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors },
+  } = useForm<KategoriData>({
+    defaultValues: {
+      nama_kategori: "",
+    },
+  });
+
+  // 4. Efek untuk mengisi form (menggantikan useEffect lama)
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         nama_kategori: initialData.nama_kategori || "",
       });
     } else {
-      setFormData({ nama_kategori: "" });
+      // Reset ke default jika mode create
+      reset({ nama_kategori: "" });
     }
-    setErrors({});
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.nama_kategori.trim()) {
-      newErrors.nama_kategori = "Nama kategori wajib diisi";
-    } else if (formData.nama_kategori.length > 100) {
-      newErrors.nama_kategori = "Nama kategori maksimal 100 karakter";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
+  // 5. Fungsi onSubmit (menggantikan handleSubmit manual dan validateForm)
+  const onSubmit = async (data: KategoriData) => {
     try {
-      onSave(formData as KategoriData);
-    } catch (error: any) {
+      // Data sudah tervalidasi oleh react-hook-form
+      await onSave(data as KategoriData);
+    } catch (error) {
       console.error("Error saving kategori item:", error);
+      const apiError = error as ApiError;
+      const message =
+        apiError.response?.data?.message ||
+        apiError.message ||
+        "Gagal menyimpan data. Silakan coba lagi.";
 
-      if (error.response?.status === 400) {
-        const errorMessage =
-          error.response?.data?.message ||
-          Object.values(error.response?.data?.errors || {}).join(", ") ||
-          "Data tidak valid";
-        alert(`Gagal menyimpan data: ${errorMessage}`);
-      } else if (error.response?.status === 409) {
-        alert("Nama kategori sudah digunakan");
-      } else {
-        alert("Gagal menyimpan data. Silakan coba lagi.");
-      }
-    } finally {
-      setLoading(false);
+      // Menampilkan error global di bawah form
+      setError("root.submit", { type: "manual", message });
     }
+  };
+
+  // Helper untuk kelas CSS
+  const getDynamicInputClass = (fieldName: keyof KategoriData) => {
+    const hasError = !!errors[fieldName];
+    return `block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 ${
+      hasError
+        ? "border-red-500" // Kelas error
+        : theme === "dark"
+        ? "border-gray-600 bg-gray-700 text-white" // Kelas dark
+        : "border-gray-300" // Kelas light
+    }`;
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    // 6. Ganti form untuk menggunakan handleSubmit dari RHF
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div>
         <label
           htmlFor="nama_kategori"
@@ -103,50 +110,67 @@ export function KategoriItemForm({ initialData, onSave, onCancel }: FormProps) {
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              Elektronik, Furniture, ATK, Laboratorium, Kantor
-            </span>
-          </p>
           <p>Maksimal 100 karakter</p>
         </div>
 
         <div className="mt-1">
-          <input
-            id="nama_kategori"
-            type="text"
+          {/* 7. Ganti input dengan Controller */}
+          <Controller
             name="nama_kategori"
-            value={formData.nama_kategori}
-            onChange={handleChange}
-            required
-            maxLength={100}
-            className={`block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-              errors.nama_kategori
-                ? "border-red-500"
-                : theme === "dark"
-                ? "border-gray-600 bg-gray-700 text-white"
-                : "border-gray-300"
-            } px-3 py-2`}
-            placeholder="Contoh: Elektronik"
+            control={control}
+            rules={{
+              // 8. Pindahkan validasi ke 'rules'
+              required: "Nama kategori wajib diisi",
+              maxLength: {
+                value: 100,
+                message: "Nama kategori maksimal 100 karakter",
+              },
+            }}
+            render={({ field }) => (
+              <input
+                {...field}
+                id="nama_kategori"
+                type="text"
+                required
+                maxLength={100}
+                disabled={isLoading} // Menggunakan isLoading dari props
+                className={getDynamicInputClass("nama_kategori")}
+                placeholder="Contoh: Elektronik"
+              />
+            )}
           />
         </div>
+        {/* 9. Tampilkan error dari RHF */}
         {errors.nama_kategori && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.nama_kategori}
+            {errors.nama_kategori.message}
           </p>
         )}
       </div>
 
+      {/* Tampilkan error submit global */}
+      {errors.root?.submit && (
+        <p
+          className={`mt-1 text-sm text-center p-2 rounded ${
+            theme === "dark"
+              ? "text-red-400 bg-red-900/20"
+              : "text-red-600 bg-red-50"
+          }`}
+        >
+          {errors.root.submit.message}
+        </p>
+      )}
+
+      {/* Tombol Aksi */}
       <div className="flex justify-end space-x-3 pt-5">
         <button
           type="button"
           onClick={onCancel}
-          disabled={loading}
+          disabled={isLoading} // Menggunakan isLoading dari props
           className={`px-4 py-2 text-sm font-medium rounded-md ${
             theme === "dark"
               ? "text-gray-200 bg-gray-600 hover:bg-gray-700"
@@ -157,12 +181,12 @@ export function KategoriItemForm({ initialData, onSave, onCancel }: FormProps) {
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={isLoading} // Menggunakan isLoading dari props
           className={`px-4 py-2 text-sm font-medium text-white rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 flex items-center transition-colors duration-200 ${
             theme === "dark" ? "hover:bg-blue-600" : "hover:bg-blue-700"
           }`}
         >
-          {loading ? (
+          {isLoading ? ( // Menggunakan isLoading dari props
             <>
               <svg
                 className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"

@@ -2,12 +2,14 @@
 import React, { useState } from "react";
 import { usePemusnahan } from "../../hooks/usePemusnahan";
 import { PemusnahanModal } from "./PemusnahanModal";
+import { PemusnahanDetail } from "./PemusnahanDetail";
 import { Asset } from "../../types/pemusnahan";
+import { Pemusnahan as PemusnahanType } from "../../types/pemusnahan";
 import { formatDate } from "../../utils/dateUtils";
 
 interface PemusnahanListProps {
   asset?: Asset;
-  onShowDetail?: (pemusnahan: any) => void;
+  onShowDetail?: (pemusnahan: PemusnahanType) => void;
 }
 
 export const PemusnahanList: React.FC<PemusnahanListProps> = ({
@@ -25,6 +27,8 @@ export const PemusnahanList: React.FC<PemusnahanListProps> = ({
 
   const [showModal, setShowModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [selectedId, setSelectedId] = useState<number>(0);
 
   const handleAddPemusnahan = (asset: Asset) => {
     setSelectedAsset(asset);
@@ -34,6 +38,16 @@ export const PemusnahanList: React.FC<PemusnahanListProps> = ({
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedAsset(null);
+  };
+
+  const handleShowDetail = (pemusnahan: PemusnahanType) => {
+    setSelectedId(pemusnahan.id_pemusnahan);
+    setShowDetail(true);
+  };
+
+  const handleCloseDetail = () => {
+    setShowDetail(false);
+    setSelectedId(0);
   };
 
   if (isLoading) {
@@ -113,7 +127,10 @@ export const PemusnahanList: React.FC<PemusnahanListProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => onShowDetail && onShowDetail(pemusnahan)}
+                      onClick={() => {
+                        handleShowDetail(pemusnahan);
+                        onShowDetail && onShowDetail(pemusnahan);
+                      }}
                       className="text-blue-600 hover:text-blue-900 mr-3"
                     >
                       Detail
@@ -143,6 +160,14 @@ export const PemusnahanList: React.FC<PemusnahanListProps> = ({
           isOpen={showModal}
           onClose={handleCloseModal}
           asset={selectedAsset}
+        />
+      )}
+
+      {selectedId > 0 && (
+        <PemusnahanDetail
+          isOpen={showDetail}
+          onClose={handleCloseDetail}
+          id_pemusnahan={selectedId}
         />
       )}
     </div>

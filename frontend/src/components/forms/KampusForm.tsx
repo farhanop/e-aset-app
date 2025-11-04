@@ -1,7 +1,9 @@
 // frontend\src\components\forms\KampusForm.tsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useForm, Controller } from "react-hook-form";
 
+// --- TIPE DATA ---
 interface KampusData {
   id_kampus?: number;
   kode_kampus: string;
@@ -16,6 +18,16 @@ interface KampusFormProps {
   onCancel?: () => void;
 }
 
+// Tipe untuk error submit
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 export const KampusForm: React.FC<KampusFormProps> = ({
   initialData,
   onSave,
@@ -23,172 +35,169 @@ export const KampusForm: React.FC<KampusFormProps> = ({
   onCancel,
 }) => {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState<Omit<KampusData, "id_kampus">>({
-    kode_kampus: "",
-    nama_kampus: "",
-    alamat: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 1. Setup react-hook-form (menggantikan useState)
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors },
+  } = useForm<KampusData>({
+    defaultValues: {
+      kode_kampus: "",
+      nama_kampus: "",
+      alamat: "",
+    },
+  });
+
+  // 2. Efek untuk mengisi form saat initialData berubah (menggunakan reset)
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         kode_kampus: initialData.kode_kampus || "",
         nama_kampus: initialData.nama_kampus || "",
         alamat: initialData.alamat || "",
       });
     } else {
-      setFormData({ kode_kampus: "", nama_kampus: "", alamat: "" });
+      // Reset ke default jika mode create
+      reset({
+        kode_kampus: "",
+        nama_kampus: "",
+        alamat: "",
+      });
     }
-    // Reset errors when initialData changes
-    setErrors({});
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
+  // 3. Fungsi onSubmit (menggantikan handleSubmit manual dan validateForm)
+  const onSubmit = async (data: KampusData) => {
+    try {
+      // Data sudah tervalidasi oleh react-hook-form
+      await onSave(data);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      const apiError = error as ApiError;
+      const message =
+        apiError.response?.data?.message ||
+        apiError.message ||
+        "Terjadi kesalahan. Silakan coba lagi.";
 
-    // Special handling for kode_kampus to only allow letters and numbers
-    if (name === "kode_kampus") {
-      // Remove any non-alphanumeric characters (only allow a-z, A-Z, 0-9)
-      const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
-      setFormData((prev) => ({ ...prev, [name]: alphanumericValue }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+      // Menampilkan error global di bawah form
+      setError("root.submit", { type: "manual", message });
     }
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  // --- Helper Kelas CSS ---
+  const labelClass = `block text-sm font-medium mb-1 ${
+    theme === "dark" ? "text-gray-300" : "text-gray-700"
+  }`;
 
-    if (!formData.kode_kampus.trim()) {
-      newErrors.kode_kampus = "Kode kampus wajib diisi";
-    } else if (!/^[a-zA-Z0-9]{1,2}$/.test(formData.kode_kampus)) {
-      newErrors.kode_kampus = "Kode kampus harus 1-2 karakter (huruf/angka)";
-    }
-
-    if (!formData.nama_kampus.trim()) {
-      newErrors.nama_kampus = "Nama kampus wajib diisi";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      try {
-        await onSave(formData);
-      } catch (error) {
-        console.error("Error submitting form:", error);
-      }
-    }
+  // Helper untuk kelas input/textarea dinamis
+  const getDynamicInputClass = (fieldName: keyof KampusData) => {
+    const hasError = !!errors[fieldName];
+    return `block w-full rounded-md shadow-sm sm:text-sm border ${
+      hasError
+        ? theme === "dark"
+          ? "bg-red-900/20 border-red-500 text-red-200" // Error Dark
+          : "bg-red-50 border-red-300 text-red-900" // Error Light
+        : theme === "dark"
+        ? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500" // Normal Dark
+        : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500" // Normal Light
+    }`;
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    // 4. Ganti <form> untuk menggunakan handleSubmit dari RHF
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Input Kode Kampus */}
       <div>
-        <label
-          htmlFor="kode_kampus"
-          className={`block text-sm font-medium mb-1 ${
-            theme === "dark" ? "text-gray-300" : "text-gray-700"
-          }`}
-        >
+        <label htmlFor="kode_kampus" className={labelClass}>
           Kode Lokasi *
         </label>
-
-        {/* Catatan contoh input */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">A, B, 1, 2, AB, A1, 12</span>
-          </p>
           <p>Maksimal 2 karakter (huruf/angka, tanpa spasi)</p>
         </div>
 
-        <input
-          type="text"
-          id="kode_kampus"
+        {/* 5. Ganti input dengan Controller */}
+        <Controller
           name="kode_kampus"
-          value={formData.kode_kampus}
-          onChange={handleChange}
-          maxLength={2}
-          disabled={isLoading}
-          className={`block w-full rounded-md shadow-sm sm:text-sm ${
-            errors.kode_kampus
-              ? theme === "dark"
-                ? "bg-red-900/20 border-red-500 text-red-200"
-                : "bg-red-50 border-red-300 text-red-900"
-              : theme === "dark"
-              ? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-              : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-          } border`}
+          control={control}
+          rules={{
+            // 6. Pindahkan validasi ke 'rules'
+            required: "Kode kampus wajib diisi",
+            pattern: {
+              value: /^[a-zA-Z0-9]{1,2}$/,
+              message: "Kode kampus harus 1-2 karakter (huruf/angka)",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="kode_kampus"
+              type="text"
+              // 7. Pindahkan logika 'handleChange' ke 'onChange'
+              onChange={(e) => {
+                const formattedValue = e.target.value
+                  .replace(/[^a-zA-Z0-9]/g, "")
+                  .toUpperCase();
+                field.onChange(formattedValue);
+              }}
+              maxLength={2}
+              disabled={isLoading}
+              className={getDynamicInputClass("kode_kampus")}
+              placeholder="Contoh: A, B, 1"
+            />
+          )}
         />
+        {/* 8. Tampilkan error dari RHF */}
         {errors.kode_kampus && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.kode_kampus}
+            {errors.kode_kampus.message}
           </p>
         )}
       </div>
 
+      {/* Input Nama Kampus */}
       <div>
-        <label
-          htmlFor="nama_kampus"
-          className={`block text-sm font-medium mb-1 ${
-            theme === "dark" ? "text-gray-300" : "text-gray-700"
-          }`}
-        >
+        <label htmlFor="nama_kampus" className={labelClass}>
           Nama Lokasi *
         </label>
-
-        {/* Catatan contoh input untuk nama kampus */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              Universitas Indo Global Mandiri, Dormitori
-            </span>
-          </p>
-          <p>Maksimal 150 karakter</p>
+          <p>Maksimal 150 karakter. Contoh: Universitas Indo Global Mandiri</p>
         </div>
-
-        <input
-          type="text"
-          id="nama_kampus"
+        <Controller
           name="nama_kampus"
-          value={formData.nama_kampus}
-          onChange={handleChange}
-          maxLength={150}
-          disabled={isLoading}
-          className={`block w-full rounded-md shadow-sm sm:text-sm ${
-            errors.nama_kampus
-              ? theme === "dark"
-                ? "bg-red-900/20 border-red-500 text-red-200"
-                : "bg-red-50 border-red-300 text-red-900"
-              : theme === "dark"
-              ? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-              : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-          } border`}
+          control={control}
+          rules={{
+            required: "Nama kampus wajib diisi",
+            maxLength: {
+              value: 150,
+              message: "Nama kampus maksimal 150 karakter",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="nama_kampus"
+              type="text"
+              maxLength={150}
+              disabled={isLoading}
+              className={getDynamicInputClass("nama_kampus")}
+              placeholder="Contoh: Universitas Indo Global Mandiri"
+            />
+          )}
         />
         {errors.nama_kampus && (
           <p
@@ -196,51 +205,55 @@ export const KampusForm: React.FC<KampusFormProps> = ({
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.nama_kampus}
+            {errors.nama_kampus.message}
           </p>
         )}
       </div>
 
+      {/* Input Alamat */}
       <div>
-        <label
-          htmlFor="alamat"
-          className={`block text-sm font-medium mb-1 ${
-            theme === "dark" ? "text-gray-300" : "text-gray-700"
-          }`}
-        >
+        <label htmlFor="alamat" className={labelClass}>
           Alamat
         </label>
-
-        {/* Catatan contoh input untuk alamat */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              Jl. Jend. Sudirman Km.4 No. 62, 20 Ilir D. IV, Kec. Ilir Tim. I,
-              Kota Palembang, Sumatera Selatan 30129
-            </span>
-          </p>
+          <p>Alamat lengkap lokasi (opsional)</p>
         </div>
-
-        <textarea
-          id="alamat"
+        <Controller
           name="alamat"
-          value={formData.alamat || ""}
-          onChange={handleChange}
-          rows={3}
-          disabled={isLoading}
-          className={`block w-full rounded-md shadow-sm sm:text-sm ${
-            theme === "dark"
-              ? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-              : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-          } border`}
+          control={control}
+          render={({ field }) => (
+            <textarea
+              {...field}
+              id="alamat"
+              rows={3}
+              disabled={isLoading}
+              className={getDynamicInputClass("alamat")}
+              placeholder="Contoh: Jl. Jend. Sudirman Km.4 No. 62..."
+              value={field.value || ""} // Handle null/undefined
+            />
+          )}
         />
+        {/* Error tidak ditampilkan karena opsional */}
       </div>
 
+      {/* Tampilkan error submit global */}
+      {errors.root?.submit && (
+        <p
+          className={`mt-1 text-sm text-center p-2 rounded ${
+            theme === "dark"
+              ? "text-red-400 bg-red-900/20"
+              : "text-red-600 bg-red-50"
+          }`}
+        >
+          {errors.root.submit.message}
+        </p>
+      )}
+
+      {/* Tombol Aksi */}
       <div className="flex justify-end space-x-3 pt-2">
         {onCancel && (
           <button

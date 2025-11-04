@@ -1,33 +1,38 @@
-// src/types/mutasi.ts
+// frontend/src/types/mutasi.ts
+import { Asset } from "./asset";
+import { Lokasi } from "./lokasi";
+import { User } from "./User";
 
-export interface Asset {
-  id_aset: string;
-  kode_aset: string;
-  nama_aset: string;
-  kategori: string;
-  status_aset: "Tersedia" | "Dipinjam" | "Rusak" | "Maintenance";
-  lokasi: string;
-  deskripsi?: string;
-}
-
+// Tipe data Mutasi lengkap (untuk list/detail)
 export interface Mutasi {
   id_mutasi: number;
   id_aset: number;
-  aset?: Asset;
   id_lokasi_lama: number;
   id_lokasi_baru: number;
-  tgl_mutasi: string;
-  catatan?: string;
+  tgl_mutasi: string | Date;
+  catatan: string;
   id_petugas: number;
+
+  // --- RELASI (Ini yang memperbaiki error 2339) ---
+  aset?: Asset;
+  lokasiLama?: Lokasi;
+  lokasiBaru?: Lokasi;
+  petugas?: User;
 }
 
+// DTO (untuk form modal)
 export interface CreateMutasiDto {
   id_aset: number;
-  id_lokasi_lama: number;
   id_lokasi_baru: number;
-  tgl_mutasi: string;
+  id_unit_kerja_baru?: number;
+  tgl_mutasi?: string | Date;
   catatan?: string;
-  id_petugas: number;
 }
 
-export interface UpdateMutasiDto extends Partial<CreateMutasiDto> {}
+// 
+export interface UpdateMutasiDto {
+  id_lokasi_baru?: number;
+  id_unit_kerja_baru?: number;
+  tgl_mutasi?: string | Date;
+  catatan?: string;
+}

@@ -3,8 +3,8 @@ import {
   IsInt,
   IsNotEmpty,
   IsString,
-  IsDateString,
   IsDate,
+  IsOptional, // 1. Impor IsOptional
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -25,4 +25,9 @@ export class CreatePeminjamanDto {
   @Type(() => Date)
   @IsNotEmpty()
   tgl_rencana_kembali: Date;
+
+  // 2. Tambahkan properti yang hilang di sini
+  @IsString()
+  @IsOptional() // Tandai sebagai opsional agar tidak wajib diisi
+  keterangan_peminjaman?: string;
 }

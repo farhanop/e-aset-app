@@ -1,8 +1,11 @@
-// frontend/src/components/forms/GedungForm.tsx
-import React, { useState, useEffect } from "react";
+// frontend\src\components\forms\GedungForm.tsx
+import React, { useEffect } from "react";
 import api from "../../api/axios";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useForm, Controller } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 
+// --- TIPE DATA ---
 interface Kampus {
   id_kampus: number;
   nama_kampus: string;
@@ -13,7 +16,7 @@ interface GedungData {
   id_gedung?: number;
   kode_gedung: string;
   nama_gedung: string;
-  id_kampus?: number | null;
+  id_kampus: number | null; // Diubah ke number | null agar konsisten
 }
 
 interface GedungFormProps {
@@ -23,7 +26,7 @@ interface GedungFormProps {
   onCancel?: () => void;
 }
 
-// Tipe untuk error
+// Tipe untuk error (masih bisa digunakan untuk error submit)
 interface ApiError {
   response?: {
     data?: {
@@ -33,6 +36,12 @@ interface ApiError {
   message?: string;
 }
 
+// --- Fungsi Fetching untuk useQuery ---
+const fetchKampusList = async (): Promise<Kampus[]> => {
+  const response = await api.get("/master-data/kampus");
+  return response.data.data || response.data || [];
+};
+
 export const GedungForm: React.FC<GedungFormProps> = ({
   initialData,
   onSave,
@@ -40,236 +49,175 @@ export const GedungForm: React.FC<GedungFormProps> = ({
   onCancel,
 }) => {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState<Omit<GedungData, "id_gedung">>({
-    kode_gedung: "",
-    nama_gedung: "",
-    id_kampus: null,
+
+  // 1. Mengambil data dropdown dengan useQuery
+  const { data: kampusList = [], isLoading: loadingKampus } = useQuery({
+    queryKey: ["kampusList"],
+    queryFn: fetchKampusList,
   });
-  const [kampusList, setKampusList] = useState<Kampus[]>([]);
-  const [loadingKampus, setLoadingKampus] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    const fetchKampus = async () => {
-      setLoadingKampus(true);
-      try {
-        console.log("Fetching kampus data...");
-        const response = await api.get("/master-data/kampus");
-        console.log("Kampus response:", response.data);
+  // 2. Setup react-hook-form
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    setError, // Untuk error submit manual
+  } = useForm<GedungData>({
+    defaultValues: {
+      kode_gedung: "",
+      nama_gedung: "",
+      id_kampus: null,
+    },
+  });
 
-        // Pastikan response.data.data ada, jika tidak, gunakan response.data langsung
-        const kampusData = response.data.data || response.data || [];
-        console.log("Processed kampus data:", kampusData);
-
-        setKampusList(kampusData);
-      } catch (error) {
-        console.error("Gagal mengambil data kampus:", error);
-        // Tambahkan handling error yang lebih baik
-        setErrors({
-          id_kampus: "Gagal memuat data kampus. Silakan coba lagi.",
-        });
-      } finally {
-        setLoadingKampus(false);
-      }
-    };
-
-    fetchKampus();
-  }, []);
-
+  // 3. Efek untuk mengisi form saat initialData berubah
   useEffect(() => {
     if (initialData) {
-      console.log("Setting initial data:", initialData);
-      setFormData({
-        kode_gedung: initialData.kode_gedung || "",
-        nama_gedung: initialData.nama_gedung || "",
+      reset({
+        ...initialData,
         id_kampus: initialData.id_kampus || null,
       });
     } else {
-      setFormData({ kode_gedung: "", nama_gedung: "", id_kampus: null });
+      reset({
+        kode_gedung: "",
+        nama_gedung: "",
+        id_kampus: null,
+      });
     }
-    // Reset errors when initialData changes
-    setErrors({});
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    console.log(`handleChange: ${name} = ${value}`);
+  // 4. Fungsi onSubmit (dipanggil oleh RHF setelah validasi)
+  const onSubmit = async (data: GedungData) => {
+    const processedData = {
+      ...data,
+      id_kampus: data.id_kampus ? Number(data.id_kampus) : null,
+    };
 
-    // Special handling for kode_gedung to only allow letters and numbers
-    if (name === "kode_gedung") {
-      // Remove any non-alphanumeric characters (only allow a-z, A-Z, 0-9)
-      const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
-      setFormData((prev) => ({
-        ...prev,
-        [name]: alphanumericValue,
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]:
-          name === "id_kampus" ? (value ? parseInt(value, 10) : null) : value,
-      }));
-    }
+    try {
+      await onSave(processedData);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      const apiError = error as ApiError;
+      const message =
+        apiError.response?.data?.message ||
+        apiError.message ||
+        "Terjadi kesalahan jaringan. Silakan coba lagi.";
 
-    // Clear error when user changes selection
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+      // Menampilkan error submit global
+      setError("root.submit", { type: "manual", message });
     }
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  // --- Helper Kelas CSS ---
+  const labelClass = `block text-sm font-medium mb-1 ${
+    theme === "dark" ? "text-gray-300" : "text-gray-700"
+  }`;
 
-    if (!formData.kode_gedung.trim()) {
-      newErrors.kode_gedung = "Kode gedung wajib diisi";
-    } else if (!/^[a-zA-Z0-9]{1,2}$/.test(formData.kode_gedung)) {
-      newErrors.kode_gedung = "Kode gedung harus 1-2 karakter (huruf/angka)";
-    }
-
-    if (!formData.nama_gedung.trim()) {
-      newErrors.nama_gedung = "Nama gedung wajib diisi";
-    }
-
-    if (!formData.id_kampus) {
-      newErrors.id_kampus = "Kampus wajib dipilih";
-    }
-
-    console.log("Validation errors:", newErrors);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log("Form submitted with data:", formData);
-
-    if (validateForm()) {
-      try {
-        await onSave(formData);
-      } catch (error) {
-        console.error("Error submitting form:", error);
-
-        // Tambahkan handling error yang lebih baik dengan tipe yang jelas
-        const apiError = error as ApiError;
-
-        if (apiError.response?.data?.message) {
-          // Handle API errors
-          setErrors({
-            submit: apiError.response.data.message,
-          });
-        } else if (apiError.message) {
-          // Handle network errors
-          setErrors({
-            submit: apiError.message,
-          });
-        } else {
-          // Handle unknown errors
-          setErrors({
-            submit: "Terjadi kesalahan jaringan. Silakan coba lagi.",
-          });
-        }
-      }
-    }
+  const getDynamicInputClass = (fieldName: keyof GedungData) => {
+    const hasError = !!errors[fieldName];
+    return `block w-full rounded-md shadow-sm sm:text-sm border ${
+      hasError
+        ? theme === "dark"
+          ? "bg-red-900/20 border-red-500 text-red-200"
+          : "bg-red-50 border-red-300 text-red-900"
+        : theme === "dark"
+        ? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
+        : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+    }`;
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    // 5. Ganti <form> untuk menggunakan handleSubmit dari RHF
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Input Kode Gedung */}
       <div>
-        <label
-          htmlFor="kode_gedung"
-          className={`block text-sm font-medium mb-1 ${
-            theme === "dark" ? "text-gray-300" : "text-gray-700"
-          }`}
-        >
+        <label htmlFor="kode_gedung" className={labelClass}>
           Kode Gedung *
         </label>
-
-        {/* Catatan contoh input */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">A, B, 1, 2, AB, A1, 12</span>
-          </p>
           <p>Maksimal 2 karakter (huruf/angka, tanpa spasi)</p>
         </div>
 
-        <input
-          type="text"
-          id="kode_gedung"
+        {/* 6. Ganti input dengan Controller */}
+        <Controller
           name="kode_gedung"
-          value={formData.kode_gedung}
-          onChange={handleChange}
-          maxLength={2}
-          disabled={isLoading}
-          className={`block w-full rounded-md shadow-sm sm:text-sm ${
-            errors.kode_gedung
-              ? theme === "dark"
-                ? "bg-red-900/20 border-red-500 text-red-200"
-                : "bg-red-50 border-red-300 text-red-900"
-              : theme === "dark"
-              ? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-              : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-          } border`}
+          control={control}
+          rules={{
+            required: "Kode gedung wajib diisi",
+            pattern: {
+              value: /^[a-zA-Z0-9]{1,2}$/,
+              message: "Kode gedung harus 1-2 karakter (huruf/angka)",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="kode_gedung"
+              type="text"
+              // Terapkan logika formatting Anda di sini
+              onChange={(e) => {
+                const formattedValue = e.target.value
+                  .replace(/[^a-zA-Z0-9]/g, "")
+                  .toUpperCase();
+                field.onChange(formattedValue);
+              }}
+              maxLength={2}
+              disabled={isLoading}
+              className={getDynamicInputClass("kode_gedung")}
+              placeholder="Contoh: A, B, 1, 2, AB, A1, 12"
+            />
+          )}
         />
+        {/* 7. Tampilkan error dari RHF */}
         {errors.kode_gedung && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.kode_gedung}
+            {errors.kode_gedung.message}
           </p>
         )}
       </div>
 
+      {/* Input Nama Gedung */}
       <div>
-        <label
-          htmlFor="nama_gedung"
-          className={`block text-sm font-medium mb-1 ${
-            theme === "dark" ? "text-gray-300" : "text-gray-700"
-          }`}
-        >
+        <label htmlFor="nama_gedung" className={labelClass}>
           Nama Gedung *
         </label>
-
-        {/* Catatan contoh input untuk nama gedung */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          <p>
-            Contoh input:{" "}
-            <span className="font-medium">
-              Gedung A, Gedung B, Gedung C dll
-            </span>
-          </p>
-          <p>Maksimal 100 karakter</p>
+          <p>Maksimal 100 karakter. Contoh: Gedung A, Gedung B</p>
         </div>
-
-        <input
-          type="text"
-          id="nama_gedung"
+        <Controller
           name="nama_gedung"
-          value={formData.nama_gedung}
-          onChange={handleChange}
-          maxLength={100}
-          disabled={isLoading}
-          className={`block w-full rounded-md shadow-sm sm:text-sm ${
-            errors.nama_gedung
-              ? theme === "dark"
-                ? "bg-red-900/20 border-red-500 text-red-200"
-                : "bg-red-50 border-red-300 text-red-900"
-              : theme === "dark"
-              ? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-              : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-          } border`}
+          control={control}
+          rules={{
+            required: "Nama gedung wajib diisi",
+            maxLength: {
+              value: 100,
+              message: "Nama gedung maksimal 100 karakter",
+            },
+          }}
+          render={({ field }) => (
+            <input
+              {...field}
+              id="nama_gedung"
+              type="text"
+              maxLength={100}
+              disabled={isLoading}
+              className={getDynamicInputClass("nama_gedung")}
+              placeholder="Contoh: Gedung A"
+            />
+          )}
         />
         {errors.nama_gedung && (
           <p
@@ -277,22 +225,16 @@ export const GedungForm: React.FC<GedungFormProps> = ({
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.nama_gedung}
+            {errors.nama_gedung.message}
           </p>
         )}
       </div>
 
+      {/* Dropdown Kampus */}
       <div>
-        <label
-          htmlFor="id_kampus"
-          className={`block text-sm font-medium mb-1 ${
-            theme === "dark" ? "text-gray-300" : "text-gray-700"
-          }`}
-        >
-          Lokasi *
+        <label htmlFor="id_kampus" className={labelClass}>
+          Lokasi (Kampus) *
         </label>
-
-        {/* Catatan contoh input untuk kampus */}
         <div
           className={`text-xs mb-2 ${
             theme === "dark" ? "text-gray-400" : "text-gray-500"
@@ -300,58 +242,54 @@ export const GedungForm: React.FC<GedungFormProps> = ({
         >
           <p>Pilih kampus lokasi gedung berada</p>
         </div>
-
-        <select
-          id="id_kampus"
+        <Controller
           name="id_kampus"
-          value={formData.id_kampus || ""}
-          onChange={handleChange}
-          disabled={isLoading || loadingKampus}
-          className={`block w-full rounded-md shadow-sm sm:text-sm ${
-            errors.id_kampus
-              ? theme === "dark"
-                ? "bg-red-900/20 border-red-500 text-red-200"
-                : "bg-red-50 border-red-300 text-red-900"
-              : theme === "dark"
-              ? "bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-blue-500"
-              : "bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500"
-          } border`}
-        >
-          <option value="">
-            {loadingKampus ? "Memuat kampus..." : "-- Pilih Kampus --"}
-          </option>
-          {kampusList.length > 0 ? (
-            kampusList.map((kampus) => (
-              <option key={kampus.id_kampus} value={kampus.id_kampus}>
-                {kampus.kode_kampus} - {kampus.nama_kampus}
+          control={control}
+          rules={{ required: "Kampus wajib dipilih" }}
+          render={({ field }) => (
+            <select
+              {...field}
+              id="id_kampus"
+              disabled={isLoading || loadingKampus}
+              className={getDynamicInputClass("id_kampus")}
+              value={field.value || ""} // Handle null value
+            >
+              <option value="">
+                {loadingKampus ? "Memuat kampus..." : "-- Pilih Kampus --"}
               </option>
-            ))
-          ) : (
-            <option value="" disabled>
-              Tidak ada data kampus
-            </option>
+              {kampusList.map((kampus) => (
+                <option key={kampus.id_kampus} value={kampus.id_kampus}>
+                  {kampus.kode_kampus} - {kampus.nama_kampus}
+                </option>
+              ))}
+            </select>
           )}
-        </select>
+        />
         {errors.id_kampus && (
           <p
             className={`mt-1 text-sm ${
               theme === "dark" ? "text-red-400" : "text-red-600"
             }`}
           >
-            {errors.id_kampus}
-          </p>
-        )}
-        {errors.submit && (
-          <p
-            className={`mt-1 text-sm ${
-              theme === "dark" ? "text-red-400" : "text-red-600"
-            }`}
-          >
-            {errors.submit}
+            {errors.id_kampus.message}
           </p>
         )}
       </div>
 
+      {/* Error Submit Global */}
+      {errors.root?.submit && (
+        <p
+          className={`mt-1 text-sm text-center p-2 rounded ${
+            theme === "dark"
+              ? "text-red-400 bg-red-900/20"
+              : "text-red-600 bg-red-50"
+          }`}
+        >
+          {errors.root.submit.message}
+        </p>
+      )}
+
+      {/* Tombol Aksi */}
       <div className="flex justify-end space-x-3 pt-2">
         {onCancel && (
           <button
@@ -369,9 +307,11 @@ export const GedungForm: React.FC<GedungFormProps> = ({
         )}
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || loadingKampus} // Nonaktifkan jika form loading ATAU dropdown loading
           className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 ${
-            isLoading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+            isLoading || loadingKampus
+              ? "bg-blue-400"
+              : "bg-blue-600 hover:bg-blue-700"
           }`}
         >
           {isLoading
