@@ -1,7 +1,7 @@
 # 🏢 e-ASET — Sistem Manajemen Aset Digital
 
 e-ASET adalah aplikasi berbasis web yang dirancang untuk mengelola aset institusi (barang, inventaris, dan pengguna) secara efisien dan terintegrasi.  
-Dibangun menggunakan **React + TypeScript (Vite)** di sisi frontend dan **NestJS** untuk backend API, dengan autentikasi JWT serta dukungan upload foto profil pengguna.
+Dibangun menggunakan **React + TypeScript (Vite)** di sisi frontend dan **NestJS** untuk backend API, dengan autentikasi JWT..
 
 ---
 
